@@ -1,0 +1,124 @@
+name: Terraform Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+      action:
+        description: 'Terraform action'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.action }} - ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: ./terraform
+        continue-on-error: true
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./terraform
+
+      - name: Terraform Plan
+        if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
+        run: |
+          terraform plan \
+            -var-file="environments/${{ github.event.inputs.environment }}.tfvars" \
+            -out=${{ github.event.inputs.environment }}.tfplan
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+          TF_VAR_subscription_id: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          TF_VAR_sales_subscription_id: ${{ secrets.AZURE_SALES_SUBSCRIPTION_ID }}
+          TF_VAR_service_subscription_id: ${{ secrets.AZURE_SERVICE_SUBSCRIPTION_ID }}
+          TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+
+      - name: Terraform Apply
+        if: github.event.inputs.action == 'apply'
+        run: terraform apply -auto-approve ${{ github.event.inputs.environment }}.tfplan
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Terraform Destroy Plan
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          terraform plan \
+            -destroy \
+            -var-file="environments/${{ github.event.inputs.environment }}.tfvars" \
+            -out=${{ github.event.inputs.environment }}-destroy.tfplan
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+          TF_VAR_subscription_id: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          TF_VAR_sales_subscription_id: ${{ secrets.AZURE_SALES_SUBSCRIPTION_ID }}
+          TF_VAR_service_subscription_id: ${{ secrets.AZURE_SERVICE_SUBSCRIPTION_ID }}
+          TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+
+      - name: Terraform Destroy Apply
+        if: github.event.inputs.action == 'destroy'
+        run: terraform apply -auto-approve ${{ github.event.inputs.environment }}-destroy.tfplan
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Upload Plan Artifact
+        if: github.event.inputs.action == 'plan'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.environment }}-tfplan
+          path: terraform/${{ github.event.inputs.environment }}.tfplan
+          retention-days: 7

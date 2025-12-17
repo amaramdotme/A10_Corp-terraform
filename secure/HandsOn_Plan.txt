@@ -1,0 +1,42 @@
+12/14/2025
+11 - Terraform & git basic setup
+	9:30 start
+		Terraform, Azure MG & Sub 
+	11:40 stop 
+	12:45 start
+	04:45 stop
+	6:00 start
+	9:15 stop
+	11:15 start
+	1:26 stop
+	
+1:30 - AKS & Istio
+3 - CI / CD - env parity
+5:30 - CI validation - testing automation
+8 - CD Validation - blue green 
+11 - Observability  
+
+12/15/2025
+Terraform CI/CD - OIDC (open ID Connect) Workload Federated Integration
+	7:00 start
+	8:30 stop
+
+12/16/2025
+Terraform local vs aGH worklfow - secret/sensitive data injeciton and mgmt 
+	11:24 start
+	12:44 Stop
+	5:30 start
+	08:30 stop
+	11:28 start
+	02:00 stop	
+
+12/17/2025 
+Terraform local vs aGH worklfow - secret/sensitive data injeciton and mgmt 
+	10:40 start
+	11:29 stop
+	12:00 start
+	
+	
+
+for now, let's create a repo in github and commit this with the gitignore as is 
+then let's try out github secrets
