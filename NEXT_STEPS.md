@@ -2,27 +2,41 @@
 
 This document outlines the plan to refactor the current Terraform code into a two-module architecture.
 
-## Current State
+## Current State (as of 2025-12-17)
 
-**Deployed Resources (Dev Environment):**
-- Management Groups: `mg-a10corp-hq`, `mg-a10corp-sales`, `mg-a10corp-service`
-- Resource Groups: `rg-a10corp-shared-dev`, `rg-a10corp-sales-dev`, `rg-a10corp-service-dev`
-- Subscription Associations: All subscriptions assigned to their respective MGs
+**Terraform-Managed Resources**: None (infrastructure destroyed, ready for restructure)
 
-**Issue**: Current monolithic structure makes it risky to destroy/recreate resource groups without affecting management groups.
+**Pre-Terraform Infrastructure (Already Complete):**
+- ✅ Resource Group: `rg-root-iac` in sub-root subscription
+- ✅ Key Vault: `kv-root-terraform`
+  - Contains secrets: `terraform-dev-sensitive`, `terraform-stage-sensitive`, `terraform-prod-sensitive`
+  - Contains per-environment subscription IDs: `terraform-{env}-tenant-id`, `terraform-{env}-hq-sub-id`, etc.
+  - RBAC: User assigned "Key Vault Secrets Officer" role
+  - Public network access: Enabled
+- ✅ Storage Account: `storerootblob`
+  - Containers: `foundation-dev`, `foundation-stage`, `foundation-prod`, `workloads-dev`, `workloads-stage`, `workloads-prod`
+  - Blob versioning: Enabled
+  - Soft delete: Enabled (7 days)
+
+**Azure Subscriptions (4 total):**
+- sub-root: [ID in Key Vault] - Root subscription (stays in Tenant Root MG)
+- sub-hq: [ID in Key Vault] - HQ subscription (will move to mg-a10corp-hq)
+- sub-sales: [ID in Key Vault] - Sales subscription (will move to mg-a10corp-sales)
+- sub-service: [ID in Key Vault] - Service subscription (will move to mg-a10corp-service)
+
+**Current Architecture**: Monolithic structure (all resources in root directory)
 
 ---
 
 ## Design Goals
 
-### Pre-Terraform Setup (Already Exists)
+### Pre-Terraform Setup (Already Complete)
 1. ✅ Tenant Root Management Group (Azure default)
-2. ✅ Tenant Root Subscription (root subscription)
-3. ✅ Sales Subscription (manually created)
-4. ✅ Service Subscription (manually created)
-5. ⏳ Resource Group under Tenant Root: `rg-a10corp-tfstate-<env>` **[TO BE CREATED]**
-   - Key Vault: `kv-a10corp-terraform` (for sensitive .tfvars)
-   - Storage Account: `sta10corptfstate` (for remote state with containers: dev, stage, prod)
+2. ✅ Four Azure Subscriptions (sub-root, sub-hq, sub-sales, sub-service)
+3. ✅ Resource Group: `rg-root-iac` (in sub-root subscription)
+4. ✅ Key Vault: `kv-root-terraform` (for sensitive values and subscription IDs)
+5. ✅ Storage Account: `storerootblob` (for remote state with 6 containers)
+6. ✅ Native Key Vault integration via Terraform data sources (see [data-sources.tf](data-sources.tf))
 
 ### Module 1: Foundation (One-time Setup)
 **Purpose**: Organizational structure that rarely changes
@@ -48,26 +62,29 @@ This document outlines the plan to refactor the current Terraform code into a tw
 ## New Directory Structure
 
 ```
-terraform/
+terraform_iac/
 ├── foundation/                          # Module 1 root
-│   ├── backend.tf                       # Remote state config
-│   ├── providers.tf                     # Provider config
+│   ├── backend.tf                       # Remote state config (Azure Storage)
+│   ├── providers.tf                     # Provider config with Key Vault data sources
+│   ├── data-sources.tf                  # Key Vault data sources for subscription IDs
 │   ├── main.tf                          # Calls foundation module
+│   ├── outputs.tf                       # Output MG IDs for workloads module
 │   ├── environments/
-│   │   ├── dev.tfvars                   # Non-sensitive (in repo)
-│   │   ├── stage.tfvars                 # Non-sensitive (in repo)
-│   │   └── prod.tfvars                  # Non-sensitive (in repo)
+│   │   ├── dev.tfvars                   # Non-sensitive only (safe for git)
+│   │   ├── stage.tfvars                 # Non-sensitive only (safe for git)
+│   │   └── prod.tfvars                  # Non-sensitive only (safe for git)
 │   └── README.md                        # Module 1 docs
 │
 ├── workloads/                           # Module 2 root
-│   ├── backend.tf                       # Remote state config
-│   ├── providers.tf                     # Provider config
+│   ├── backend.tf                       # Remote state config (Azure Storage)
+│   ├── providers.tf                     # Provider config with Key Vault data sources
+│   ├── data-sources.tf                  # Key Vault + foundation outputs
 │   ├── main.tf                          # Calls workloads module
-│   ├── data.tf                          # Data sources (references foundation outputs)
+│   ├── outputs.tf                       # Output RG names
 │   ├── environments/
-│   │   ├── dev.tfvars                   # Non-sensitive (in repo)
-│   │   ├── stage.tfvars                 # Non-sensitive (in repo)
-│   │   └── prod.tfvars                  # Non-sensitive (in repo)
+│   │   ├── dev.tfvars                   # Non-sensitive only (safe for git)
+│   │   ├── stage.tfvars                 # Non-sensitive only (safe for git)
+│   │   └── prod.tfvars                  # Non-sensitive only (safe for git)
 │   └── README.md                        # Module 2 docs
 │
 ├── modules/                             # Reusable modules
@@ -83,31 +100,78 @@ terraform/
 │       ├── outputs.tf                   # Output RG names
 │       └── naming.tf                    # Naming logic for RGs
 │
-├── scripts/
-│   ├── fetch-sensitive-tfvars.sh        # Fetch from Key Vault
-│   ├── upload-sensitive-tfvars.sh       # Upload to Key Vault
-│   ├── init-foundation.sh               # Initialize foundation module
-│   └── init-workloads.sh                # Initialize workloads module
+├── .github/workflows/                   # CI/CD workflows
+│   ├── foundation-deploy.yml            # Foundation deployment
+│   └── workloads-deploy.yml             # Workloads deployment
 │
-└── secure/                              # Gitignored
-    ├── foundation/
-    │   ├── dev-sensitive.tfvars
-    │   ├── stage-sensitive.tfvars
-    │   └── prod-sensitive.tfvars
-    └── workloads/
-        ├── dev-sensitive.tfvars
-        ├── stage-sensitive.tfvars
-        └── prod-sensitive.tfvars
+└── [legacy files to archive]            # Current monolithic files
+    ├── providers.tf
+    ├── data-sources.tf
+    ├── management-groups.tf
+    ├── subscriptions.tf
+    ├── resource-groups.tf
+    ├── naming.tf
+    └── environments/*.tfvars
 ```
+
+## Key Changes from Original Plan
+
+This updated plan reflects the **native Key Vault integration** approach implemented in the current codebase:
+
+### What Changed
+1. **No external scripts needed** - Terraform data sources fetch values directly from Key Vault
+2. **No sensitive .tfvars files** - All subscription IDs fetched at runtime
+3. **No secure/ directory** - All .tfvars files are safe for git
+4. **Simplified workflow** - Just `source .env && terraform plan`
+5. **Already complete** - Pre-Terraform infrastructure (Key Vault, Storage) is ready
+
+### What Stayed the Same
+1. Two-module architecture (foundation + workloads)
+2. Remote state in Azure Storage (separate state files per module)
+3. Multi-environment support (dev, stage, prod)
+4. OIDC authentication for GitHub Actions
+5. CAF-compliant naming patterns
+
+### Migration Advantages
+- ✅ Simpler local development (no script execution)
+- ✅ Fewer security risks (no sensitive files on disk)
+- ✅ Better audit trail (Key Vault logs all secret access)
+- ✅ Less to maintain (no scripts, no sensitive .tfvars management)
+- ✅ Same developer experience (terraform plan/apply commands unchanged)
 
 ---
 
-## .tfvars Split Strategy
+---
 
-### Foundation Module
+## Key Vault Integration Strategy
 
-#### Non-Sensitive (in repo) - `foundation/environments/dev.tfvars`
+**Approach**: Native Terraform data sources (no external scripts needed)
+
+### How It Works
+1. **Default Provider**: Authenticates using `.env` file (local) or OIDC (CI/CD)
+2. **Data Sources**: Terraform fetches subscription/tenant IDs directly from Key Vault
+3. **Aliased Providers**: HQ, Sales, Service providers use the fetched subscription IDs
+4. **No Circular Dependency**: Default provider uses root subscription, aliased providers use Key Vault values
+
+### Key Vault Secrets Structure
+
+**Per-Environment Subscription IDs** (individual secrets):
+- `terraform-dev-tenant-id`
+- `terraform-dev-hq-sub-id`
+- `terraform-dev-sales-sub-id`
+- `terraform-dev-service-sub-id`
+- (Repeat pattern for stage/prod)
+
+**Combined Sensitive Values** (optional, for backup):
+- `terraform-dev-sensitive` (contains all sensitive .tfvars content)
+- `terraform-stage-sensitive`
+- `terraform-prod-sensitive`
+
+### .tfvars Structure
+
+#### Foundation Module - `foundation/environments/dev.tfvars`
 ```hcl
+# All values safe for git - no secrets
 org_name    = "a10corp"
 environment = "dev"
 
@@ -117,20 +181,13 @@ common_tags = {
   Owner       = "A10Corp"
   Module      = "Foundation"
 }
+
+# Subscription IDs fetched from Key Vault via data sources (not in .tfvars)
 ```
 
-#### Sensitive (Key Vault) - Secret: `tfvars-foundation-dev-sensitive`
+#### Workloads Module - `workloads/environments/dev.tfvars`
 ```hcl
-tenant_id               = "8116fad0-5032-463e-b911-cc6d1d75001d"
-root_subscription_id    = "fdb297a9-2ece-469c-808d-a8227259f6e8"
-sales_subscription_id   = "385c6fcb-c70b-4aed-b745-76bd608303d7"
-service_subscription_id = "aef7255d-42b5-4f84-81f2-202191e8c7d1"
-```
-
-### Workloads Module
-
-#### Non-Sensitive (in repo) - `workloads/environments/dev.tfvars`
-```hcl
+# All values safe for git - no secrets
 org_name    = "a10corp"
 environment = "dev"
 location    = "eastus"
@@ -141,25 +198,23 @@ common_tags = {
   Owner       = "A10Corp"
   Module      = "Workloads"
 }
+
+# Subscription IDs fetched from Key Vault via data sources (not in .tfvars)
 ```
 
-#### Sensitive (Key Vault) - Secret: `tfvars-workloads-dev-sensitive`
-```hcl
-root_subscription_id    = "fdb297a9-2ece-469c-808d-a8227259f6e8"
-sales_subscription_id   = "385c6fcb-c70b-4aed-b745-76bd608303d7"
-service_subscription_id = "aef7255d-42b5-4f84-81f2-202191e8c7d1"
-```
+**Note**: With native Key Vault integration, there are NO sensitive .tfvars files to manage. All sensitive values are fetched at runtime via Terraform data sources.
 
 ---
 
 ## Implementation Steps
 
-### Phase 1: Infrastructure Preparation
-- [ ] 1.1. Create Resource Group for Terraform state: `rg-a10corp-tfstate-dev`
-- [ ] 1.2. Create Storage Account: `sta10corptfstate`
-- [ ] 1.3. Create containers: `dev`, `stage`, `prod`
-- [ ] 1.4. Create Key Vault: `kv-a10corp-terraform`
-- [ ] 1.5. Grant GitHub service principal access to Key Vault
+### Phase 1: Infrastructure Preparation ✅ COMPLETE
+- [x] 1.1. Create Resource Group for Terraform state: `rg-root-iac`
+- [x] 1.2. Create Storage Account: `storerootblob`
+- [x] 1.3. Create containers: `foundation-dev/stage/prod`, `workloads-dev/stage/prod`
+- [x] 1.4. Create Key Vault: `kv-root-terraform`
+- [x] 1.5. Configure Key Vault RBAC and upload sensitive secrets
+- [x] 1.6. Enable blob versioning and soft delete on storage account
 
 ### Phase 2: Code Refactoring
 - [ ] 2.1. Create module directories (`modules/foundation/`, `modules/workloads/`)
@@ -171,40 +226,36 @@ service_subscription_id = "aef7255d-42b5-4f84-81f2-202191e8c7d1"
 - [ ] 2.7. Create `workloads/main.tf` that calls workloads module
 - [ ] 2.8. Create `workloads/data.tf` to reference foundation outputs (if needed)
 
-### Phase 3: Variables Split
-- [ ] 3.1. Create non-sensitive .tfvars in `foundation/environments/`
-- [ ] 3.2. Create non-sensitive .tfvars in `workloads/environments/`
-- [ ] 3.3. Create sensitive .tfvars templates in `secure/foundation/`
-- [ ] 3.4. Create sensitive .tfvars templates in `secure/workloads/`
-- [ ] 3.5. Update variables.tf for each module
+### Phase 3: Variables & Data Sources
+- [ ] 3.1. Create non-sensitive .tfvars in `foundation/environments/` (safe for git)
+- [ ] 3.2. Create non-sensitive .tfvars in `workloads/environments/` (safe for git)
+- [ ] 3.3. Create `foundation/data-sources.tf` with Key Vault data sources
+- [ ] 3.4. Create `workloads/data-sources.tf` with Key Vault data sources
+- [ ] 3.5. Update variables.tf for each module (remove subscription ID variables)
 
 ### Phase 4: Backend Configuration
 - [ ] 4.1. Create `foundation/backend.tf` with Azure Storage backend
 - [ ] 4.2. Create `workloads/backend.tf` with Azure Storage backend
 - [ ] 4.3. Configure separate state files for each module
 
-### Phase 5: Scripts & Automation
-- [ ] 5.1. Create `scripts/fetch-sensitive-tfvars.sh`
-- [ ] 5.2. Create `scripts/upload-sensitive-tfvars.sh`
-- [ ] 5.3. Create `scripts/init-foundation.sh`
-- [ ] 5.4. Create `scripts/init-workloads.sh`
-- [ ] 5.5. Make scripts executable (`chmod +x scripts/*.sh`)
+### Phase 5: Provider Configuration
+- [ ] 5.1. Create `foundation/providers.tf` with default provider + Key Vault integration
+- [ ] 5.2. Create `workloads/providers.tf` with default provider + Key Vault integration
+- [ ] 5.3. Configure aliased providers (hq, sales, service) using Key Vault data sources
+- [ ] 5.4. Verify provider authentication works locally
 
-### Phase 6: Key Vault Setup
-- [ ] 6.1. Upload foundation sensitive .tfvars to Key Vault
-  - `tfvars-foundation-dev-sensitive`
-  - `tfvars-foundation-stage-sensitive`
-  - `tfvars-foundation-prod-sensitive`
-- [ ] 6.2. Upload workloads sensitive .tfvars to Key Vault
-  - `tfvars-workloads-dev-sensitive`
-  - `tfvars-workloads-stage-sensitive`
-  - `tfvars-workloads-prod-sensitive`
+### Phase 6: Key Vault Verification ✅ MOSTLY COMPLETE
+- [x] 6.1. Verify individual subscription ID secrets exist in Key Vault
+  - `terraform-dev-tenant-id`, `terraform-dev-hq-sub-id`, etc.
+- [x] 6.2. Verify combined sensitive secrets (for backup/reference)
+  - `terraform-dev-sensitive`, `terraform-stage-sensitive`, `terraform-prod-sensitive`
+- [ ] 6.3. Test data source fetching locally with `terraform console`
 
 ### Phase 7: GitHub Actions Workflows
-- [ ] 7.1. Create `.github/workflows/foundation-deploy.yml`
-- [ ] 7.2. Create `.github/workflows/workloads-deploy.yml`
-- [ ] 7.3. Update workflows to fetch sensitive .tfvars from Key Vault
-- [ ] 7.4. Remove old `terraform-deploy.yml` workflow
+- [ ] 7.1. Create `.github/workflows/foundation-deploy.yml` with OIDC authentication
+- [ ] 7.2. Create `.github/workflows/workloads-deploy.yml` with OIDC authentication
+- [ ] 7.3. Verify workflows use Azure login (no Key Vault script fetching needed)
+- [ ] 7.4. Archive old `terraform-deploy.yml` workflow
 
 ### Phase 8: State Migration
 - [ ] 8.1. Backup current state file (`terraform.tfstate`)
@@ -246,35 +297,41 @@ service_subscription_id = "aef7255d-42b5-4f84-81f2-202191e8c7d1"
 
 ## Local Development Workflow (After Migration)
 
-### Fetch Sensitive Values
+### Prerequisites
 ```bash
-# Fetch sensitive tfvars for both modules
-./scripts/fetch-sensitive-tfvars.sh foundation dev
-./scripts/fetch-sensitive-tfvars.sh workloads dev
+# 1. Authenticate with Azure
+az login
+
+# 2. Load environment variables (sets ARM_SUBSCRIPTION_ID and ARM_TENANT_ID for default provider)
+source .env
 ```
 
 ### Apply Foundation (One-time)
 ```bash
 cd foundation/
 terraform init
-terraform plan \
-  -var-file="environments/dev.tfvars" \
-  -var-file="../secure/foundation/dev-sensitive.tfvars"
-terraform apply \
-  -var-file="environments/dev.tfvars" \
-  -var-file="../secure/foundation/dev-sensitive.tfvars"
+terraform plan -var-file="environments/dev.tfvars"
+terraform apply -var-file="environments/dev.tfvars"
 ```
+
+**How it works:**
+- Default provider uses `.env` file (ARM_SUBSCRIPTION_ID = sub-root)
+- Data sources fetch subscription IDs from Key Vault
+- Aliased providers (hq, sales, service) use fetched subscription IDs
+- No sensitive .tfvars files needed!
 
 ### Apply Workloads (Repeatable)
 ```bash
 cd workloads/
 terraform init
-terraform plan \
-  -var-file="environments/dev.tfvars" \
-  -var-file="../secure/workloads/dev-sensitive.tfvars"
-terraform apply \
-  -var-file="environments/dev.tfvars" \
-  -var-file="../secure/workloads/dev-sensitive.tfvars"
+terraform plan -var-file="environments/dev.tfvars"
+terraform apply -var-file="environments/dev.tfvars"
+```
+
+### Destroy Workloads (Safe - doesn't affect foundation)
+```bash
+cd workloads/
+terraform destroy -var-file="environments/dev.tfvars"
 ```
 
 ---
@@ -285,15 +342,19 @@ terraform apply \
 1. Navigate to: Actions → Deploy Foundation
 2. Select environment: dev/stage/prod
 3. Select action: plan/apply
-4. Workflow fetches sensitive .tfvars from Key Vault
-5. Runs terraform plan/apply
+4. Workflow authenticates with Azure via OIDC (sets ARM_SUBSCRIPTION_ID and ARM_TENANT_ID)
+5. Terraform fetches subscription IDs from Key Vault via data sources
+6. Runs terraform plan/apply
 
 ### Workloads Deployment
 1. Navigate to: Actions → Deploy Workloads
 2. Select environment: dev/stage/prod
 3. Select action: plan/apply/destroy
-4. Workflow fetches sensitive .tfvars from Key Vault
-5. Runs terraform plan/apply/destroy
+4. Workflow authenticates with Azure via OIDC
+5. Terraform fetches subscription IDs from Key Vault via data sources
+6. Runs terraform plan/apply/destroy
+
+**Key Benefit**: No need to manually fetch secrets from Key Vault - Terraform does it automatically!
 
 ---
 
@@ -331,5 +392,33 @@ If migration fails:
 
 ---
 
-**Last Updated**: 2025-12-16
-**Status**: Planning Phase
+## Key Changes from Original Plan
+
+This updated plan reflects the **native Key Vault integration** approach implemented in the current codebase:
+
+### What Changed
+1. **No external scripts needed** - Terraform data sources fetch values directly from Key Vault
+2. **No sensitive .tfvars files** - All subscription IDs fetched at runtime
+3. **No secure/ directory** - All .tfvars files are safe for git
+4. **Simplified workflow** - Just `source .env && terraform plan`
+5. **Already complete** - Pre-Terraform infrastructure (Key Vault, Storage) is ready
+
+### What Stayed the Same
+1. Two-module architecture (foundation + workloads)
+2. Remote state in Azure Storage (separate state files per module)
+3. Multi-environment support (dev, stage, prod)
+4. OIDC authentication for GitHub Actions
+5. CAF-compliant naming patterns
+
+### Migration Advantages
+- ✅ Simpler local development (no script execution)
+- ✅ Fewer security risks (no sensitive files on disk)
+- ✅ Better audit trail (Key Vault logs all secret access)
+- ✅ Less to maintain (no scripts, no sensitive .tfvars management)
+- ✅ Same developer experience (terraform plan/apply commands unchanged)
+
+---
+
+**Last Updated**: 2025-12-17
+**Status**: Infrastructure Ready - Code Refactoring Phase
+**Next Action**: Begin Phase 2 (Code Refactoring)
