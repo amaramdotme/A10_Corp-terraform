@@ -6,6 +6,8 @@
 # Shared/Common Resource Group
 # Deployed to HQ subscription
 resource "azurerm_resource_group" "shared_common" {
+  provider = azurerm.hq
+
   name     = var.naming_patterns["azurerm_resource_group"]["shared"]
   location = var.location
 
@@ -21,6 +23,8 @@ resource "azurerm_resource_group" "shared_common" {
 # Sales Resource Group
 # Deployed to Sales subscription
 resource "azurerm_resource_group" "sales" {
+  provider = azurerm.sales
+
   name     = var.naming_patterns["azurerm_resource_group"]["sales"]
   location = var.location
 
@@ -35,6 +39,8 @@ resource "azurerm_resource_group" "sales" {
 # Service Resource Group
 # Deployed to Service subscription
 resource "azurerm_resource_group" "service" {
+  provider = azurerm.service
+
   name     = var.naming_patterns["azurerm_resource_group"]["service"]
   location = var.location
 

@@ -1,2 +1,4 @@
-# Backend configuration for production environment
-key = "workloads-prod.tfstate"
+# Backend configuration for workloads-prod environment
+storage_account_name = "storerootblob"
+container_name       = "workloads-prod"
+key                  = "terraform.tfstate"

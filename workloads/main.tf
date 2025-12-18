@@ -36,4 +36,11 @@ module "workloads" {
   # Pass configuration from common module
   location    = module.common.location
   common_tags = module.common.common_tags
+
+  # Pass aliased providers to the module
+  providers = {
+    azurerm.hq      = azurerm.hq
+    azurerm.sales   = azurerm.sales
+    azurerm.service = azurerm.service
+  }
 }

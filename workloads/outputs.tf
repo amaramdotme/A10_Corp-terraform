@@ -15,8 +15,8 @@ output "resource_groups" {
 output "workload_summary" {
   description = "Summary of workload resources created"
   value = {
-    environment      = var.environment
-    resource_groups  = module.workloads.resource_groups
-    naming_patterns  = module.common.naming_patterns
+    environment     = var.environment
+    resource_groups = module.workloads.resource_groups
+    naming_patterns = module.common.naming_patterns
   }
 }
