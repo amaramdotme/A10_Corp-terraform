@@ -2,6 +2,8 @@
 
 This directory deploys the organizational foundation for A10 Corp Azure infrastructure.
 
+> **CI/CD**: Changes to foundation trigger automated workflows via GitHub Actions.
+
 ## Purpose
 
 - **One-time deployment** per Azure tenant
