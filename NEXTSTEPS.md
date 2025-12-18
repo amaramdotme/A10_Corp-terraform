@@ -6,56 +6,38 @@
 
 ## 🎯 Top Priorities (Immediate)
 
-### 1. Deploy Workloads Module (Dev Environment)
-**Status**: Ready to execute
-**Estimated Time**: 10 minutes
-**Risk**: Low
+### 1. ✅ Deploy Workloads Module (Dev Environment) - COMPLETE
+**Status**: ✅ Deployed 2025-12-17
+**Resources Created**: 3 resource groups (shared, sales, service)
+**State**: storerootblob/workloads-dev/terraform.tfstate
 
-```bash
-cd workloads/
-source ../.env
-terraform init -backend-config="environments/backend-dev.hcl"
-terraform plan -var-file="environments/dev.tfvars" -out=dev.tfplan
-terraform apply dev.tfplan
-```
-
-**Expected Result**:
-- 3 resource groups created (shared, sales, service)
-- State stored in storerootblob/workloads-dev
-
-**Validation**:
-```bash
-terraform state list
-terraform output resource_groups
-az group list --query "[?starts_with(name, 'rg-a10corp')]" -o table
-```
+**Deployed Resources**:
+- `rg-a10corp-shared-dev` in sub-hq (eastus)
+- `rg-a10corp-sales-dev` in sub-sales (eastus)
+- `rg-a10corp-service-dev` in sub-service (eastus)
 
 ---
 
-### 2. Verify Multi-Subscription Deployment
-**Status**: After workloads deploy
+### 2. Update ARCHITECTURE.md & CLAUDE.md with Deployment Status
+**Status**: Next priority
 **Estimated Time**: 5 minutes
 
-**Verify**:
-- `rg-a10corp-shared-dev` created in sub-hq
-- `rg-a10corp-sales-dev` created in sub-sales
-- `rg-a10corp-service-dev` created in sub-service
-
-```bash
-# Check each resource group's subscription
-az group show --name rg-a10corp-shared-dev --query "{name:name, subscription:id}"
-az group show --name rg-a10corp-sales-dev --query "{name:name, subscription:id}"
-az group show --name rg-a10corp-service-dev --query "{name:name, subscription:id}"
-```
+**Update Sections**:
+- ARCHITECTURE.md: Change "Workloads: ⏳ Pending" → "✅ Deployed (dev)"
+- ARCHITECTURE.md: Update infrastructure stats (3/9 resource groups deployed)
+- CLAUDE.md: Update "Current Infrastructure State" section
 
 ---
 
 ### 3. Test Workloads Destroy/Recreate
-**Status**: After successful deploy
-**Estimated Time**: 15 minutes
+**Status**: Recommended validation
+**Estimated Time**: 10 minutes
 **Purpose**: Validate workloads module can be safely destroyed/recreated without affecting foundation
 
 ```bash
+cd workloads/
+source ../.env
+
 # Destroy workloads (dev)
 terraform destroy -var-file="environments/dev.tfvars"
 
@@ -65,7 +47,8 @@ terraform plan  # Should show no changes
 
 # Recreate workloads
 cd ../workloads/
-terraform apply -var-file="environments/dev.tfvars"
+terraform plan -var-file="environments/dev.tfvars" -out=dev.tfplan
+terraform apply dev.tfplan
 ```
 
 ---
