@@ -1,0 +1,50 @@
+name: Test OIDC Authentication
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        type: choice
+        options:
+          - global
+          - dev
+          - stage
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test-oidc:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+
+      - name: Run OIDC Test Script
+        run: python .github/scripts/test_oidc.py
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
