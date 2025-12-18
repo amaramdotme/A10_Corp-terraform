@@ -42,7 +42,7 @@ Tenant Root Group
 | Component | Status | Resources | State File |
 |-----------|--------|-----------|------------|
 | **Pre-Terraform** (manual) | ✅ Complete | rg-root-iac, kv-root-terraform, storerootblob | N/A |
-| **Foundation** | ✅ Deployed | 3 MGs + 3 associations | storerootblob/foundation-dev |
+| **Foundation** | ✅ Deployed | 3 MGs + 3 associations | storerootblob/foundation |
 | **Workloads** | ⏳ Pending | 0/9 resource groups | storerootblob/workloads-{env} |
 
 ### Management Group IDs
@@ -210,62 +210,89 @@ terraform apply dev.tfplan
 2. Backend config ✓ `environments/backend-{env}.hcl`
 3. Var-file ✓ `environments/{env}.tfvars`
 
-### Foundation Commands (Global)
+================================================================================
+TERRAFORM COMMANDS - THREE-MODULE ARCHITECTURE
+================================================================================
 
-```bash
-# Directory: foundation/
+###### FOUNDATION STARTS ######
+--- Init ---
 cd foundation/
-source ../.env
+source ../.env && terraform init -backend-config="environments/backend.hcl"
 
-# Initialize
-terraform init -backend-config="environments/backend.hcl"
+#remove backend.tf to store locally
+source ../.env && terraform init 
 
-# Deploy
+--- Plan & Apply ---
 terraform fmt -recursive && terraform validate
+
 terraform plan -out=foundation.tfplan
 terraform apply foundation.tfplan
 
-# State
+--- State ---
 terraform state list
 terraform state show module.foundation.azurerm_management_group.hq
+terraform state pull > backup-foundation-$(date +%Y%m%d).json
 
-# Outputs
+--- Import ---
+terraform import \
+  module.foundation.azurerm_management_group.hq \
+  /providers/Microsoft.Management/managementGroups/mg-a10corp-hq
+
+--- Outputs ---
 terraform output
 terraform output -json > foundation-outputs.json
 
-# ⚠️ Destroy (use extreme caution!)
-terraform destroy
-```
 
-### Workloads Commands (Per-Environment)
+--- Destroy ---
+source ../.env && terraform destroy 
 
-```bash
-# Directory: workloads/
-cd workloads/
-source ../.env
+###### FOUNDATION ENDS ######
 
-# --- DEV ---
-terraform init -backend-config="environments/backend-dev.hcl"
-terraform plan -var-file="environments/dev.tfvars" -out=dev.tfplan
-terraform apply dev.tfplan
+###### WORKLOADS STARTS ######
 
-# --- STAGE ---
-terraform init -reconfigure -backend-config="environments/backend-stage.hcl"
-terraform plan -var-file="environments/stage.tfvars" -out=stage.tfplan
-terraform apply stage.tfplan
+--- Init ---
+cd workloads
+source ../.env && terraform init -backend-config="environments/backend-dev.hcl"
 
-# --- PROD ---
-terraform init -reconfigure -backend-config="environments/backend-prod.hcl"
-terraform plan -var-file="environments/prod.tfvars" -out=prod.tfplan
-terraform apply prod.tfplan
+--- Plan & Apply ---
+terraform fmt -recursive && terraform validate
 
-# State
+terraform plan -var-file="environments/dev.tfvars" -out=workloads.tfplan
+
+terraform apply "workloads.tfplan"
+
+--- State ---
 terraform state list
+terraform state show module.workloads.azurerm_resource_group.shared_common
 terraform state show module.workloads.azurerm_resource_group.sales
+terraform state show module.workloads.azurerm_resource_group.service
+terraform state pull > backup-workloads-$(date +%Y%m%d).json
 
-# Destroy (environment-specific)
-terraform destroy -var-file="environments/dev.tfvars"
-```
+--- Import ---
+# Import shared/common resource group (HQ subscription)
+terraform import \
+  module.workloads.azurerm_resource_group.shared_common \
+  /subscriptions/<HQ_SUB_ID>/resourceGroups/rg-a10corp-shared-dev
+
+# Import sales resource group (Sales subscription)
+terraform import \
+  module.workloads.azurerm_resource_group.sales \
+  /subscriptions/<SALES_SUB_ID>/resourceGroups/rg-a10corp-sales-dev
+
+# Import service resource group (Service subscription)
+terraform import \
+  module.workloads.azurerm_resource_group.service \
+  /subscriptions/<SERVICE_SUB_ID>/resourceGroups/rg-a10corp-service-dev
+
+--- Outputs ---
+terraform output
+terraform output -json > workloads-outputs.json
+terraform output resource_groups
+
+--- Destroy ---
+source ../.env && terraform destroy -var-file="environments/dev.tfvars"
+
+###### WORKLOADS ENDS ######
 
 ### Common Commands
 

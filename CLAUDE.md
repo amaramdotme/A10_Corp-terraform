@@ -43,7 +43,7 @@ source .env  # REQUIRED - Sets ARM_SUBSCRIPTION_ID and ARM_TENANT_ID
 
 ### Deployed ✅
 - **Foundation Module**: 3 Management Groups + 3 Subscription Associations
-  - State: `storerootblob/foundation-dev/terraform.tfstate`
+  - State: `storerootblob/foundation/terraform.tfstate`
   - MG IDs documented in [ARCHITECTURE.md](ARCHITECTURE.md#management-group-ids)
 
 ### Pending ⏳
