@@ -236,9 +236,9 @@ See [DECISIONS.md](DECISIONS.md) Decision 14 for full rationale.
 
 ## Current State (as of 2025-12-17)
 
-### 🟡 Infrastructure Status: READY FOR RESTRUCTURING
+### ✅ Infrastructure Status: THREE-MODULE ARCHITECTURE DEPLOYED
 
-**Terraform-Managed Resources**: None deployed (infrastructure was destroyed in previous session)
+**Terraform-Managed Resources**: 7 resources deployed in foundation module
 
 **Pre-Terraform Infrastructure (Manual Setup - Complete):**
 - ✅ **Resource Group**: `rg-root-iac` in sub-root subscription
@@ -252,40 +252,54 @@ See [DECISIONS.md](DECISIONS.md) Decision 14 for full rationale.
   - Soft delete: Enabled (7 days)
   - Containers: `foundation-dev`, `foundation-stage`, `foundation-prod`, `workloads-dev`, `workloads-stage`, `workloads-prod`
 
-**Azure Subscriptions (4 total, all currently in Tenant Root MG):**
+**Azure Subscriptions (4 total):**
 - sub-root: [ID stored in Key Vault] - Root subscription (stays in Tenant Root MG, never moved)
-- sub-hq: [ID stored in Key Vault] - HQ subscription (will be moved to mg-a10corp-hq)
-- sub-sales: [ID stored in Key Vault] - Sales subscription (will be moved to mg-a10corp-sales)
-- sub-service: [ID stored in Key Vault] - Service subscription (will be moved to mg-a10corp-service)
+- sub-hq: [ID stored in Key Vault] - HQ subscription ✅ **ASSOCIATED to mg-a10corp-hq**
+- sub-sales: [ID stored in Key Vault] - Sales subscription ✅ **ASSOCIATED to mg-a10corp-sales**
+- sub-service: [ID stored in Key Vault] - Service subscription ✅ **ASSOCIATED to mg-a10corp-service**
 
-**⚠️ Security Note**: Subscription IDs are currently exposed in `environments/*.tfvars` files. These need to be migrated to Key Vault per Decision 12 & 13.
+**✅ Security Note**: Subscription IDs are stored in Key Vault and fetched via data sources. Only non-sensitive environment variables in .tfvars files.
 
 **Repository Status:**
-- ⚠️ Not yet initialized as Git repository
-- Code exists but not committed
-- Target: `github.com:GoldenSapien/A10_Corp-terraform.git` (private repo exists but not connected)
+- ✅ Git repository initialized and connected
+- ✅ Code committed and pushed to GitHub
+- ✅ Repository: `github.com:amaramdotme/A10_Corp-terraform.git` (private)
 
-### ⏳ Next Steps - Ready to Restructure
+### ✅ Architecture Complete - Ready for Workloads
 
-**Infrastructure is now ready for two-module architecture implementation:**
-1. Create new directory structure (modules/, foundation/, workloads/, environments/, scripts/, secure/)
-2. Split current .tf files into foundation and workloads modules
-3. Create non-sensitive .tfvars files for git repo
-4. Configure remote state backends for both modules
-5. Create helper scripts for Key Vault secret fetching
-6. Update .gitignore to protect sensitive files
-7. Test foundation module deployment
-8. Test workloads module deployment
-9. Initialize git repository and push to GitHub
+**Three-module architecture successfully implemented and deployed:**
+1. ✅ Created new directory structure (modules/common, modules/foundation, modules/workloads, foundation/, workloads/)
+2. ✅ Split monolithic .tf files into three modules (archived in archive_monolithic/)
+3. ✅ Created non-sensitive .tfvars files (only contain environment names)
+4. ✅ Configured remote state backends (foundation and workloads)
+5. ✅ Implemented Key Vault data sources for sensitive values
+6. ✅ Updated .gitignore to protect sensitive files
+7. ✅ Foundation module deployed and tested (7 resources)
+8. ⏳ **NEXT**: Deploy workloads module (Resource Groups)
+9. ✅ Git repository initialized and pushed to GitHub
+
+**Current Deployment:**
+- Foundation: 3 Management Groups + 3 Subscription Associations deployed
+- Workloads: Not yet deployed (next step)
 
 ### 📝 Recent Session Changes (2025-12-17 - Current Session):
-1. **Azure Environment Discovery**: Identified actual 4-subscription setup (sub-root, sub-hq, sub-sales, sub-service)
-2. **Key Vault Verification**: Confirmed `kv-root-terraform` with RBAC permissions and public access enabled
-3. **Sensitive Secrets Created**: Uploaded combined .tfvars to Key Vault (terraform-dev/stage/prod-sensitive)
-4. **Storage Account Configuration**: Verified `storerootblob` and enabled blob versioning + soft delete
-5. **Storage Containers Created**: Created 6 containers for foundation and workloads modules (dev/stage/prod)
-6. **DECISIONS.md Updated**: Added Decision 13 (Combined vs Separate Sensitive .tfvars), updated Decisions 11 & 12
-7. **Documentation Updated**: CLAUDE.md current state section reflects completion of pre-Terraform infrastructure
+1. **Three-Module Architecture Implemented**: Restructured from monolithic to modules/common, modules/foundation, modules/workloads
+2. **Missing variables.tf Files Created**:
+   - foundation/variables.tf (org_name, location, common_tags)
+   - modules/foundation/variables.tf (naming_patterns, subscription IDs, tenant_id, tags)
+3. **Storage Account Naming Added**:
+   - Added azurerm_storage_account to resource_type_map with "st" prefix
+   - Implemented three-branch naming system with no_hyphen_resources set
+   - Naming logic: sta10corpsalesdev (alphanumeric only, no hyphens)
+4. **Foundation Module Deployed**: Successfully deployed 7 resources (3 MGs + 3 associations + 1 validation)
+5. **Remote State Configured**:
+   - Foundation using storerootblob/foundation-dev/terraform.tfstate
+   - Backend versioning enabled for state history
+6. **Git Repository Management**:
+   - Committed restructuring changes (59 files, 3042 insertions, 429 deletions)
+   - Pushed to github.com:amaramdotme/A10_Corp-terraform.git
+   - Commit: 4637c4d "Restructure: Migrate from monolithic to three-module architecture"
+7. **Documentation**: Created terraform_commands.txt with complete lifecycle commands for foundation and workloads
 
 ### 📝 Previous Session Changes (2025-12-15/16):
 1. **Naming System Refactored**: Removed azurecaf provider, now using pure Terraform locals in naming.tf
@@ -297,12 +311,24 @@ See [DECISIONS.md](DECISIONS.md) Decision 14 for full rationale.
 7. **Repository Visibility**: Changed from public to private for security
 8. **GitHub Actions Workflow**: Created `.github/workflows/terraform-deploy.yml` for CI/CD (not yet tested)
 
-### 📍 Subscriptions (4 Total):
-- **sub-root**: Root subscription (stays in Tenant Root MG, never moved)
-- **sub-hq**: HQ subscription (will be moved to mg-a10corp-hq)
-- **sub-sales**: Sales subscription (will be moved to mg-a10corp-sales)
-- **sub-service**: Service subscription (will be moved to mg-a10corp-service)
-- **Note**: All subscription IDs should be stored in Key Vault secrets (`terraform-{env}-sensitive`). Currently exposed in `environments/*.tfvars` - pending migration.
+### 📍 Management Groups & Subscriptions (Deployed):
+
+**Management Group Hierarchy:**
+```
+Tenant Root Group
+└── mg-a10corp-hq (a56fd357-2ecc-46bf-b831-1b86e5fd43bb)
+    ├── sub-hq associated
+    ├── mg-a10corp-sales (3ad4b4c9-368c-44c9-8f02-df14e0da8447)
+    │   └── sub-sales associated
+    └── mg-a10corp-service (4b511fa7-48ad-495e-b7d7-bf6cfdc8a22e)
+        └── sub-service associated
+```
+
+**Subscriptions (4 Total):**
+- **sub-root**: Root subscription (stays in Tenant Root MG, hosts Key Vault & Storage)
+- **sub-hq**: HQ subscription ✅ Associated to mg-a10corp-hq
+- **sub-sales**: Sales subscription ✅ Associated to mg-a10corp-sales
+- **sub-service**: Service subscription ✅ Associated to mg-a10corp-service
 
 ## Session Maintenance Notes
 
