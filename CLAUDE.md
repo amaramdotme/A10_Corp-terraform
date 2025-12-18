@@ -39,16 +39,27 @@ source .env  # REQUIRED - Sets ARM_SUBSCRIPTION_ID and ARM_TENANT_ID
 
 ## 🔍 Current Infrastructure State
 
-**Last Updated**: 2025-12-17
+**Last Updated**: 2025-12-18
 
 ### Deployed ✅
 - **Foundation Module**: 3 Management Groups + 3 Subscription Associations
   - State: `storerootblob/foundation/terraform.tfstate`
   - MG IDs documented in [ARCHITECTURE.md](ARCHITECTURE.md#management-group-ids)
 
+- **Workloads Module (Dev)**: 3 Resource Groups ✅ Deployed 2025-12-17
+  - State: `storerootblob/workloads-dev/terraform.tfstate`
+  - Resources: `rg-a10corp-shared-dev`, `rg-a10corp-sales-dev`, `rg-a10corp-service-dev`
+
+- **CI/CD Authentication**: OIDC ✅ Configured and tested 2025-12-18
+  - App Registration: `github-oidc-a10-corp-terraform`
+  - 4 federated credentials: global, workloads-dev, workloads-stage, workloads-prod
+  - 6 RBAC roles assigned (4 subscriptions + Key Vault + Storage)
+  - All 5 tests passed (Azure CLI, Subscriptions, Key Vault, Storage, RBAC)
+  - Details: [OIDC_SETUP.md](OIDC_SETUP.md)
+
 ### Pending ⏳
-- **Workloads Module**: 0/9 Resource Groups
-  - Ready to deploy (see [NEXTSTEPS.md - Priority 1](NEXTSTEPS.md#1-deploy-workloads-module-dev-environment))
+- **Workloads Module (Stage)**: 0/3 Resource Groups
+- **Workloads Module (Prod)**: 0/3 Resource Groups
 
 ### Pre-Terraform (Manual, never touch)
 - `rg-root-iac` → `kv-root-terraform` (9 secrets) + `storerootblob` (4 containers)
@@ -213,12 +224,16 @@ git push
 
 ## 🔄 Next Actions (Quick Reference)
 
-**Top Priority**: Deploy workloads module (dev environment)
+**Top Priority**: Create Terraform deployment workflows (foundation & workloads)
+
+**Completed Recently**:
+- ✅ Workloads dev environment deployed (2025-12-17)
+- ✅ OIDC authentication configured and tested (2025-12-18)
 
 **See**: [NEXTSTEPS.md](NEXTSTEPS.md) for complete task list with priorities
 
 ---
 
 **Maintained For**: Claude Code AI assistant
-**Last Updated**: 2025-12-17
+**Last Updated**: 2025-12-18
 **Repository**: Private (github.com:amaramdotme/A10_Corp-terraform.git)

@@ -1,6 +1,6 @@
 # A10 Corp Azure Infrastructure - Architecture
 
-**Last Updated**: 2025-12-17
+**Last Updated**: 2025-12-18
 **Repository**: [github.com:amaramdotme/A10_Corp-terraform.git](https://github.com/amaramdotme/A10_Corp-terraform.git) (private)
 **Terraform**: >= 1.0 | **Azure Provider**: ~> 4.0
 
@@ -30,11 +30,11 @@ Tenant Root Group
 │       └── storerootblob (4 state containers)
 │
 └── mg-a10corp-hq ✅ FOUNDATION
-    ├── sub-hq → rg-a10corp-shared-{env} ⏳ WORKLOADS
+    ├── sub-hq → rg-a10corp-shared-dev ✅ (stage/prod ⏳)
     ├── mg-a10corp-sales ✅
-    │   └── sub-sales → rg-a10corp-sales-{env} ⏳
+    │   └── sub-sales → rg-a10corp-sales-dev ✅ (stage/prod ⏳)
     └── mg-a10corp-service ✅
-        └── sub-service → rg-a10corp-service-{env} ⏳
+        └── sub-service → rg-a10corp-service-dev ✅ (stage/prod ⏳)
 ```
 
 ### Deployment Status
@@ -43,7 +43,10 @@ Tenant Root Group
 |-----------|--------|-----------|------------|
 | **Pre-Terraform** (manual) | ✅ Complete | rg-root-iac, kv-root-terraform, storerootblob | N/A |
 | **Foundation** | ✅ Deployed | 3 MGs + 3 associations | storerootblob/foundation |
-| **Workloads** | ⏳ Pending | 0/9 resource groups | storerootblob/workloads-{env} |
+| **Workloads (Dev)** | ✅ Deployed 2025-12-17 | 3 resource groups | storerootblob/workloads-dev |
+| **Workloads (Stage)** | ⏳ Pending | 0/3 resource groups | storerootblob/workloads-stage |
+| **Workloads (Prod)** | ⏳ Pending | 0/3 resource groups | storerootblob/workloads-prod |
+| **CI/CD (OIDC)** | ✅ Configured 2025-12-18 | 4 federated credentials + 6 RBAC roles | [OIDC_SETUP.md](OIDC_SETUP.md) |
 
 ### Management Group IDs
 
@@ -366,9 +369,10 @@ terraform force-unlock <LOCK_ID>
 - **Modules**: 3 (Common, Foundation, Workloads)
 - **Management Groups**: 3 deployed ✅
 - **Subscription Associations**: 3 deployed ✅
-- **Resource Groups**: 0/9 deployed ⏳
+- **Resource Groups**: 3/9 deployed (dev ✅, stage/prod ⏳)
 - **Key Vault Secrets**: 9 (3 subscription IDs × 3 environments)
 - **State Files**: 4 (1 foundation + 3 workloads)
+- **CI/CD Authentication**: OIDC ✅ (4 environments: global, dev, stage, prod)
 
 ---
 
@@ -377,11 +381,12 @@ terraform force-unlock <LOCK_ID>
 - **Architecture Decisions**: [DECISIONS.md](DECISIONS.md)
 - **Next Steps**: [NEXTSTEPS.md](NEXTSTEPS.md)
 - **AI Context**: [CLAUDE.md](CLAUDE.md)
+- **OIDC Setup Guide**: [OIDC_SETUP.md](OIDC_SETUP.md)
 - **Azure CAF**: https://learn.microsoft.com/azure/cloud-adoption-framework/
 - **Terraform azurerm**: https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
 - **Azure Management Groups**: https://learn.microsoft.com/azure/governance/management-groups/
 
 ---
 
-**Last Updated**: 2025-12-17
+**Last Updated**: 2025-12-18
 **License**: Private - All Rights Reserved
