@@ -1,0 +1,175 @@
+name: Workloads Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy'
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+      confirmation:
+        description: 'Type "destroy" to confirm'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+jobs:
+  validate-confirmation:
+    name: Validate Confirmation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "destroy" ]; then
+            echo "❌ Confirmation failed. You must type 'destroy' to proceed."
+            exit 1
+          fi
+          echo "✅ Confirmation validated"
+
+  check-prerequisites:
+    name: Check Prerequisites
+    runs-on: ubuntu-latest
+    needs: validate-confirmation
+    outputs:
+      workloads-jobs-running: ${{ steps.check-workloads.outputs.jobs-running }}
+
+    steps:
+      - name: Check for Active Workloads Workflows
+        id: check-workloads
+        run: |
+          ACTIVE_RUNS=$(gh run list \
+            --workflow=workloads-deploy.yml \
+            --status=in_progress \
+            --json status \
+            --jq 'length')
+
+          echo "Active workloads workflows: $ACTIVE_RUNS"
+
+          if [ "$ACTIVE_RUNS" -gt 0 ]; then
+            echo "jobs-running=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Workloads deployment is currently running. Please wait for it to complete."
+            exit 1
+          else
+            echo "jobs-running=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+
+  terraform-destroy-plan:
+    name: Terraform Destroy Plan (Workloads)
+    runs-on: ubuntu-latest
+    needs: check-prerequisites
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: terraform init -backend-config="environments/backend-${{ github.event.inputs.environment }}.hcl"
+        working-directory: ./workloads
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Terraform Destroy Plan
+        run: |
+          terraform plan \
+            -destroy \
+            -var-file="environments/${{ github.event.inputs.environment }}.tfvars" \
+            -out=${{ github.event.inputs.environment }}-destroy.tfplan
+        working-directory: ./workloads
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Upload Destroy Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: workloads-${{ github.event.inputs.environment }}-destroy-tfplan
+          path: workloads/${{ github.event.inputs.environment }}-destroy.tfplan
+          retention-days: 7
+
+      - name: Show Plan Summary
+        run: |
+          echo "⚠️ **DESTROY PLAN GENERATED**"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Review the plan artifact carefully before approving the apply step."
+          terraform show ${{ github.event.inputs.environment }}-destroy.tfplan
+        working-directory: ./workloads
+
+  terraform-destroy-apply:
+    name: Terraform Destroy Apply (Workloads)
+    runs-on: ubuntu-latest
+    needs: terraform-destroy-plan
+    environment:
+      name: ${{ github.event.inputs.environment }}
+      url: https://portal.azure.com/#browse/resourcegroups
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+
+      - name: Download Destroy Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: workloads-${{ github.event.inputs.environment }}-destroy-tfplan
+          path: workloads/
+
+      - name: Terraform Init
+        run: terraform init -backend-config="environments/backend-${{ github.event.inputs.environment }}.hcl"
+        working-directory: ./workloads
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Terraform Destroy Apply
+        run: |
+          echo "🔥 Destroying workloads-${{ github.event.inputs.environment }} infrastructure..."
+          terraform apply -auto-approve ${{ github.event.inputs.environment }}-destroy.tfplan
+          echo "✅ Destroy completed"
+        working-directory: ./workloads
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true

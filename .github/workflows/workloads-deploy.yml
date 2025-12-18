@@ -1,0 +1,241 @@
+name: Workloads CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'workloads/**'
+      - 'modules/workloads/**'
+      - '.github/workflows/workloads-deploy.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'workloads/**'
+      - 'modules/workloads/**'
+      - '.github/workflows/workloads-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  actions: read
+
+jobs:
+  check-prerequisites:
+    name: Check Prerequisites
+    runs-on: ubuntu-latest
+    outputs:
+      foundation-jobs-running: ${{ steps.check-foundation.outputs.jobs-running }}
+      foundation-state-ok: ${{ steps.check-foundation-state.outputs.state-ok }}
+      environment: ${{ steps.determine-env.outputs.environment }}
+
+    steps:
+      - name: Determine Environment
+        id: determine-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for Active Foundation Workflows
+        id: check-foundation
+        run: |
+          ACTIVE_RUNS=$(gh run list \
+            --workflow=foundation-deploy.yml \
+            --status=in_progress \
+            --json status \
+            --jq 'length')
+
+          echo "Active foundation workflows: $ACTIVE_RUNS"
+
+          if [ "$ACTIVE_RUNS" -gt 0 ]; then
+            echo "jobs-running=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Foundation deployment is currently running. Please wait for it to complete."
+            exit 1
+          else
+            echo "jobs-running=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+
+      - name: Check Foundation State
+        id: check-foundation-state
+        run: |
+          terraform init -backend-config="environments/backend.hcl"
+
+          # Check if state exists and has resources
+          RESOURCE_COUNT=$(terraform state list 2>/dev/null | wc -l)
+
+          echo "Foundation resources in state: $RESOURCE_COUNT"
+
+          if [ "$RESOURCE_COUNT" -lt 3 ]; then
+            echo "state-ok=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Foundation state appears incomplete (expected at least 3 resources, found $RESOURCE_COUNT)"
+            exit 1
+          else
+            echo "state-ok=true" >> $GITHUB_OUTPUT
+            echo "✅ Foundation state looks good ($RESOURCE_COUNT resources)"
+          fi
+        working-directory: ./foundation
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+
+  terraform-plan:
+    name: Terraform Plan (Workloads)
+    runs-on: ubuntu-latest
+    needs: check-prerequisites
+    environment: ${{ needs.check-prerequisites.outputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: ./workloads
+        continue-on-error: true
+
+      - name: Terraform Init
+        run: terraform init -backend-config="environments/backend-${{ needs.check-prerequisites.outputs.environment }}.hcl"
+        working-directory: ./workloads
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./workloads
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var-file="environments/${{ needs.check-prerequisites.outputs.environment }}.tfvars" \
+            -out=${{ needs.check-prerequisites.outputs.environment }}.tfplan
+        working-directory: ./workloads
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: workloads-${{ needs.check-prerequisites.outputs.environment }}-tfplan
+          path: workloads/${{ needs.check-prerequisites.outputs.environment }}.tfplan
+          retention-days: 7
+
+      - name: Comment Plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ **Workloads Terraform Plan (${{ needs.check-prerequisites.outputs.environment }})** completed successfully.\n\nReview the plan artifact and approve the workflow to proceed with apply.`
+            })
+
+  terraform-apply:
+    name: Terraform Apply (Workloads)
+    runs-on: ubuntu-latest
+    needs: [check-prerequisites, terraform-plan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    environment:
+      name: ${{ needs.check-prerequisites.outputs.environment }}
+      url: https://portal.azure.com/#browse/resourcegroups
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: workloads-${{ needs.check-prerequisites.outputs.environment }}-tfplan
+          path: workloads/
+
+      - name: Terraform Init
+        run: terraform init -backend-config="environments/backend-${{ needs.check-prerequisites.outputs.environment }}.hcl"
+        working-directory: ./workloads
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve ${{ needs.check-prerequisites.outputs.environment }}.tfplan
+        working-directory: ./workloads
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true

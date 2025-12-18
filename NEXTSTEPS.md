@@ -1,35 +1,32 @@
 # Next Steps & Parking Lot
 
-**Last Updated**: 2025-12-17
+**Last Updated**: 2025-12-18
 
 ---
 
 ## 🎯 Top Priorities (Immediate)
 
-### 1. ✅ Deploy Workloads Module (Dev Environment) - COMPLETE
-**Status**: ✅ Deployed 2025-12-17
-**Resources Created**: 3 resource groups (shared, sales, service)
-**State**: storerootblob/workloads-dev/terraform.tfstate
+### 1. Test GitHub Actions Workflows
+**Status**: Ready to test
+**Estimated Time**: 15 minutes
+**Dependencies**: Workflows created ✅
 
-**Deployed Resources**:
-- `rg-a10corp-shared-dev` in sub-hq (eastus)
-- `rg-a10corp-sales-dev` in sub-sales (eastus)
-- `rg-a10corp-service-dev` in sub-service (eastus)
+**Test Steps**:
+1. Create a non-destructive PR (e.g., documentation update)
+2. Verify foundation-deploy.yml triggers (should skip - no path changes)
+3. Make a change to `modules/common/naming.tf` (triggers foundation workflow)
+4. Verify workloads-deploy.yml triggers on workloads changes
+5. Test manual workflow dispatch for workloads-dev
 
----
-
-### 2. Update ARCHITECTURE.md & CLAUDE.md with Deployment Status
-**Status**: Next priority
-**Estimated Time**: 5 minutes
-
-**Update Sections**:
-- ARCHITECTURE.md: Change "Workloads: ⏳ Pending" → "✅ Deployed (dev)"
-- ARCHITECTURE.md: Update infrastructure stats (3/9 resource groups deployed)
-- CLAUDE.md: Update "Current Infrastructure State" section
+**Success Criteria**:
+- Plan jobs execute successfully
+- GitHub environments require manual approval
+- OIDC authentication works
+- Pre-requisite checks pass
 
 ---
 
-### 3. Test Workloads Destroy/Recreate
+### 2. Test Workloads Destroy/Recreate
 **Status**: Recommended validation
 **Estimated Time**: 10 minutes
 **Purpose**: Validate workloads module can be safely destroyed/recreated without affecting foundation
@@ -95,23 +92,61 @@ Update sections:
 
 ## 📋 Medium-Term (This Month)
 
-### 7. GitHub Actions CI/CD Pipeline
-**Status**: OIDC configuration documented, workflow not yet tested
+### 7. ✅ GitHub Actions OIDC Setup - COMPLETE
+**Status**: ✅ Configured and tested 2025-12-18
 **Effort**: Medium
 **Dependencies**: All environments deployed
 
-**Tasks**:
-1. Create App Registration in Azure AD
-2. Configure federated credentials (dev, stage, prod)
-3. Assign RBAC permissions
-4. Test workflow with dev environment
-5. Enable branch protection rules
+**Completed Tasks**:
+1. ✅ Created App Registration in Azure AD (`github-oidc-a10-corp-terraform`)
+2. ✅ Configured 4 federated credentials (global, dev, stage, prod)
+3. ✅ Assigned RBAC permissions (6 roles: 4 subscriptions + Key Vault + Storage)
+4. ✅ Created GitHub environments with protection rules
+5. ✅ Tested OIDC authentication - All 5 tests passed
+6. ✅ Created test workflow (.github/workflows/test-oidc.yml)
 
-**Reference**: [DECISIONS.md - Decision 9](DECISIONS.md#decision-9-cicd-authentication-method)
+**Test Results** (2025-12-18):
+- ✅ Azure CLI Authentication: PASSED
+- ✅ Subscription Access (all 4): PASSED
+- ✅ Key Vault Access (12 secrets): PASSED
+- ✅ Storage Account Access (4 containers): PASSED
+- ✅ RBAC Permissions: PASSED
+
+**Reference**: [OIDC_SETUP.md](OIDC_SETUP.md) | [DECISIONS.md - Decision 9](DECISIONS.md#decision-9-cicd-authentication-method)
+
+**Next**: Create Terraform deployment workflows (foundation & workloads)
 
 ---
 
-### 8. Add Azure Policy Assignments
+### 8. ✅ Create Terraform Deployment Workflows - COMPLETE
+**Status**: ✅ Created 2025-12-18
+**Effort**: Medium
+**Dependencies**: OIDC setup complete ✅
+
+**Completed Tasks**:
+1. ✅ Created foundation deployment workflow (plan & apply on PR/push)
+2. ✅ Created workloads deployment workflow (plan & apply with env input)
+3. ✅ Created workloads destroy workflow (manual trigger)
+4. ✅ Created foundation destroy workflow (manual trigger)
+
+**Deliverables**:
+- `.github/workflows/foundation-deploy.yml` (CI/CD on PR/push)
+- `.github/workflows/workloads-deploy.yml` (CI/CD with env input + prerequisites)
+- `.github/workflows/workloads-destroy.yml` (manual trigger with confirmation)
+- `.github/workflows/foundation-destroy.yml` (manual trigger with safety checks)
+
+**Features**:
+- Path-based filtering (foundation & workloads modules)
+- Manual approval gates (GitHub environments)
+- Pre-requisite checks (no active jobs, state validation)
+- Artifact management (plan files)
+- OIDC authentication integration
+
+**Next**: Test workflows with a non-destructive PR
+
+---
+
+### 9. Add Azure Policy Assignments
 **Status**: Future enhancement
 **Effort**: Medium
 
@@ -125,7 +160,7 @@ Update sections:
 
 ---
 
-### 9. Add Monitoring & Alerting
+### 10. Add Monitoring & Alerting
 **Status**: Parking lot
 **Effort**: Large
 
@@ -141,27 +176,27 @@ Update sections:
 
 ## 🅿️ Parking Lot (Future Consideration)
 
-### 10. Networking Module
+### 11. Networking Module
 **Trigger**: When VM/container deployments needed
 **Scope**: VNets, Subnets, NSGs, Peering
 
-### 11. State File Migration to Terraform Cloud
+### 12. State File Migration to Terraform Cloud
 **Trigger**: Team grows beyond 3 people
 **Benefit**: Better state locking, RBAC, run history
 
-### 12. Terraform Module Registry
+### 13. Terraform Module Registry
 **Trigger**: Code reuse across multiple projects
 **Benefit**: Versioned modules, centralized management
 
-### 13. Azure DevOps Integration
+### 14. Azure DevOps Integration
 **Trigger**: Enterprise requirement
 **Alternative**: Currently using GitHub Actions
 
-### 14. Multi-Region Deployment
+### 15. Multi-Region Deployment
 **Trigger**: Disaster recovery requirements
 **Complexity**: High (cross-region state management)
 
-### 15. Infrastructure Testing
+### 16. Infrastructure Testing
 **Tools**: Terratest, tflint, checkov
 **Effort**: Medium
 **Benefit**: Automated validation
@@ -180,7 +215,7 @@ Recent decisions requiring follow-up:
 
 - **Decision 15**: Three-module architecture ✅ Implemented
 - **Decision 16**: Three-branch naming system ✅ Implemented
-- **Decision 9**: OIDC authentication ⏳ Documented, not tested
+- **Decision 9**: OIDC authentication ✅ Configured and tested 2025-12-18
 - **Decision 14**: Native Key Vault integration ✅ Implemented
 
 See [DECISIONS.md](DECISIONS.md) for complete decision history.
@@ -205,17 +240,19 @@ See [DECISIONS.md](DECISIONS.md) for complete decision history.
 
 ## 📊 Success Metrics
 
-### Current Status (2025-12-17)
+### Current Status (2025-12-18)
 
 | Metric | Target | Actual | Status |
 |--------|--------|--------|--------|
 | Management Groups | 3 | 3 | ✅ 100% |
 | Subscription Associations | 3 | 3 | ✅ 100% |
-| Resource Groups (dev) | 3 | 0 | ⏳ 0% |
+| Resource Groups (dev) | 3 | 3 | ✅ 100% |
 | Resource Groups (stage) | 3 | 0 | ⏳ 0% |
 | Resource Groups (prod) | 3 | 0 | ⏳ 0% |
 | Documentation Files | 4 | 4 | ✅ 100% |
 | Zero Secrets in Git | Yes | Yes | ✅ 100% |
+| GitHub Actions Workflows | 4 | 4 | ✅ 100% |
+| OIDC Authentication | 1 | 1 | ✅ 100% |
 
 ### Next Milestone: First Full Deployment
 - All 3 environments deployed (9 resource groups)

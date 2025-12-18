@@ -95,64 +95,81 @@ az ad sp create --id <appId>
 
 ## 🔐 Step 2: Configure Federated Credentials
 
-Federated credentials establish trust between GitHub and Azure. You need one credential per GitHub environment (dev, stage, prod).
+Federated credentials establish trust between GitHub and Azure. You need **4 credentials total**:
+- **1 for global** (foundation module - no environment)
+- **3 for workloads** (dev, stage, prod environments)
 
-### 2.1 Federated Credential for Dev Environment
+### 2.1 Federated Credential for Global (Foundation Module)
 
 ```bash
 # Replace <appId> with your client ID from Step 1
 az ad app federated-credential create \
   --id <appId> \
   --parameters '{
-    "name": "GitHubActions-Dev",
+    "name": "GitHubActions-Global",
     "issuer": "https://token.actions.githubusercontent.com",
-    "subject": "repo:amaramdotme/A10_Corp-terraform:environment:dev",
+    "subject": "repo:amaramdotme/A10_Corp-terraform:environment:global",
     "audiences": ["api://AzureADTokenExchange"],
-    "description": "GitHub Actions OIDC for dev environment"
+    "description": "GitHub Actions OIDC for global infrastructure (foundation module - management groups)"
   }'
 ```
 
-### 2.2 Federated Credential for Stage Environment
+### 2.2 Federated Credential for Workloads-Dev Environment
 
 ```bash
 az ad app federated-credential create \
   --id <appId> \
   --parameters '{
-    "name": "GitHubActions-Stage",
+    "name": "GitHubActions-Workloads-Dev",
     "issuer": "https://token.actions.githubusercontent.com",
-    "subject": "repo:amaramdotme/A10_Corp-terraform:environment:stage",
+    "subject": "repo:amaramdotme/A10_Corp-terraform:environment:workloads-dev",
     "audiences": ["api://AzureADTokenExchange"],
-    "description": "GitHub Actions OIDC for stage environment"
+    "description": "GitHub Actions OIDC for workloads dev environment"
   }'
 ```
 
-### 2.3 Federated Credential for Prod Environment
+### 2.3 Federated Credential for Workloads-Stage Environment
 
 ```bash
 az ad app federated-credential create \
   --id <appId> \
   --parameters '{
-    "name": "GitHubActions-Prod",
+    "name": "GitHubActions-Workloads-Stage",
     "issuer": "https://token.actions.githubusercontent.com",
-    "subject": "repo:amaramdotme/A10_Corp-terraform:environment:prod",
+    "subject": "repo:amaramdotme/A10_Corp-terraform:environment:workloads-stage",
     "audiences": ["api://AzureADTokenExchange"],
-    "description": "GitHub Actions OIDC for prod environment"
+    "description": "GitHub Actions OIDC for workloads stage environment"
   }'
 ```
 
-### 2.4 Verify Federated Credentials
+### 2.4 Federated Credential for Workloads-Prod Environment
+
+```bash
+az ad app federated-credential create \
+  --id <appId> \
+  --parameters '{
+    "name": "GitHubActions-Workloads-Prod",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:amaramdotme/A10_Corp-terraform:environment:workloads-prod",
+    "audiences": ["api://AzureADTokenExchange"],
+    "description": "GitHub Actions OIDC for workloads prod environment"
+  }'
+```
+
+### 2.5 Verify Federated Credentials
 
 ```bash
 # List all federated credentials for the app
 az ad app federated-credential list --id <appId>
 ```
 
-**Expected**: You should see 3 federated credentials (dev, stage, prod).
+**Expected**: You should see 4 federated credentials (global, workloads-dev, workloads-stage, workloads-prod).
 
 **Important Notes**:
 - The `subject` must EXACTLY match your GitHub environment names
-- GitHub environments are case-sensitive (`dev` ≠ `Dev`)
-- You can also use branch-based subjects: `repo:owner/repo:ref:refs/heads/main`
+- GitHub environments are case-sensitive (`global` ≠ `Global`)
+- `global` is for foundation module infrastructure (not tied to dev/stage/prod)
+- Workloads credentials are prefixed with `workloads-` to distinguish them
 
 ---
 
@@ -207,7 +224,17 @@ az role assignment create \
   --scope "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform"
 ```
 
-### 3.6 Verify RBAC Assignments
+### 3.6 Assign Storage Blob Data Contributor (for Terraform state)
+
+```bash
+# Grant permission to read/write Terraform state files in storerootblob
+az role assignment create \
+  --assignee <objectId> \
+  --role "Storage Blob Data Contributor" \
+  --scope "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.Storage/storageAccounts/storerootblob"
+```
+
+### 3.7 Verify RBAC Assignments
 
 ```bash
 # List all role assignments for the service principal
@@ -222,6 +249,7 @@ az role assignment list --assignee <objectId> --all -o table
 | Contributor | /subscriptions/385c6fcb-c70b-4aed-b745-76bd608303d7 (sales) |
 | Contributor | /subscriptions/aef7255d-42b5-4f84-81f2-202191e8c7d1 (service) |
 | Key Vault Secrets User | kv-root-terraform |
+| Storage Blob Data Contributor | storerootblob |
 
 **Optional - Management Group Permissions**:
 If you need to modify management groups via CI/CD:
@@ -243,12 +271,17 @@ GitHub environments provide isolation for secrets/variables and enable deploymen
 
 **Navigate to**: `https://github.com/amaramdotme/A10_Corp-terraform/settings/environments`
 
-**Create three environments**:
-1. `dev` (development)
-2. `stage` (staging)
-3. `prod` (production - enable protection rules)
+**Create four environments**:
+1. `global` (foundation module - management groups, no environment)
+2. `workloads-dev` (workloads development)
+3. `workloads-stage` (workloads staging)
+4. `workloads-prod` (workloads production - enable protection rules)
 
-**Production Protection Rules** (recommended):
+**Global Environment** (recommended):
+- ✅ Required reviewers: Add yourself (global infrastructure affects all environments)
+- ✅ Deployment branches: Only `main` branch
+
+**Workloads Production Protection Rules** (recommended):
 - ✅ Required reviewers: Add yourself
 - ✅ Wait timer: 0 minutes (or add delay for safety)
 - ✅ Deployment branches: Only `main` branch
@@ -315,11 +348,21 @@ AZURE_ROOT_SUBSCRIPTION_ID  Updated YYYY-MM-DD
 
 ### 5.1 Test Manually via GitHub Actions UI
 
+**Test Global/Foundation Module**:
 1. **Navigate to**: `Actions` tab in GitHub repository
-2. **Select**: "Terraform Deploy" workflow
+2. **Select**: "Terraform Foundation" workflow (or similar)
 3. **Click**: "Run workflow" dropdown
 4. **Configure**:
-   - Environment: `dev`
+   - Environment: `global`
+   - Action: `plan`
+5. **Click**: "Run workflow"
+
+**Test Workloads Module (Dev)**:
+1. **Navigate to**: `Actions` tab in GitHub repository
+2. **Select**: "Terraform Workloads" workflow (or similar)
+3. **Click**: "Run workflow" dropdown
+4. **Configure**:
+   - Environment: `workloads-dev`
    - Action: `plan`
 5. **Click**: "Run workflow"
 
@@ -375,16 +418,24 @@ az logout
 1. Verify environment names match exactly (case-sensitive):
    ```bash
    az ad app federated-credential list --id <appId>
-   # Check subject: "repo:amaramdotme/A10_Corp-terraform:environment:dev"
+   # Check subjects match:
+   # - "repo:amaramdotme/A10_Corp-terraform:environment:global"
+   # - "repo:amaramdotme/A10_Corp-terraform:environment:workloads-dev"
+   # - "repo:amaramdotme/A10_Corp-terraform:environment:workloads-stage"
+   # - "repo:amaramdotme/A10_Corp-terraform:environment:workloads-prod"
    ```
 
-2. Verify GitHub environment exists:
+2. Verify GitHub environments exist:
    - Go to: `Settings → Environments`
-   - Ensure `dev`, `stage`, `prod` environments exist
+   - Ensure `global`, `workloads-dev`, `workloads-stage`, `workloads-prod` environments exist
 
 3. Check workflow is using correct environment:
    ```yaml
-   environment: ${{ github.event.inputs.environment }}
+   # For foundation workflow
+   environment: global
+
+   # For workloads workflow
+   environment: workloads-${{ github.event.inputs.environment }}
    ```
 
 ### Error: "Unable to get Key Vault secret"
@@ -467,15 +518,18 @@ Before considering OIDC setup complete, verify:
 
 - [ ] **App Registration created** with correct name
 - [ ] **Service Principal created** and objectId recorded
-- [ ] **3 Federated Credentials** configured (dev, stage, prod)
+- [ ] **4 Federated Credentials** configured (global, workloads-dev, workloads-stage, workloads-prod)
 - [ ] **RBAC assignments** on all 4 subscriptions (Contributor)
 - [ ] **Key Vault RBAC** assigned (Key Vault Secrets User)
-- [ ] **GitHub Environments** created (dev, stage, prod)
+- [ ] **Storage Account RBAC** assigned (Storage Blob Data Contributor)
+- [ ] **GitHub Environments** created (global, workloads-dev, workloads-stage, workloads-prod)
 - [ ] **GitHub Variables** set (AZURE_CLIENT_ID, AZURE_TENANT_ID)
 - [ ] **GitHub Secrets** set (AZURE_ROOT_SUBSCRIPTION_ID)
-- [ ] **Test workflow** runs successfully in dev environment
-- [ ] **Terraform plan** completes without authentication errors
+- [ ] **Test global/foundation workflow** runs successfully
+- [ ] **Test workloads-dev workflow** runs successfully
+- [ ] **Terraform plan** completes without authentication errors in both modules
 - [ ] **Key Vault access** works (subscription IDs fetched successfully)
+- [ ] **Terraform state** reads/writes successfully to storerootblob
 
 ---
 
