@@ -158,4 +158,4 @@ Unlike workloads, foundation does NOT have dev/stage/prod variants. The same MG 
 
 ## Last Updated
 
-2025-12-18
+2025-12-18 try deploy 2 after RBAC adjustments
