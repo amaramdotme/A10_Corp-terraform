@@ -916,10 +916,94 @@ User .tfvars → workloads/variables.tf → modules/common/variables.tf (default
 
 ---
 
+## Decision 16: Three-Branch Naming System for Azure Resource Restrictions
+
+**Date**: 2025-12-17
+
+**Context**: Azure Storage Accounts require alphanumeric-only names (no hyphens or special characters), but CAF naming convention uses hyphens for readability (e.g., `rg-a10corp-sales-dev`).
+
+| Option | Description | Trade-offs |
+|--------|-------------|------------|
+| **Two naming functions** | Separate functions for hyphenated vs non-hyphenated resources | ❌ Code duplication<br>❌ Harder to maintain<br>✅ Clear separation |
+| **Conditional formatting in single function** | Single `for` loop with conditional separator | ❌ Complex nested logic<br>✅ Single source of truth<br>❌ Hard to read |
+| **Three-branch naming with no_hyphen_resources set (chosen)** | Single naming pattern with three logical branches based on resource type | ✅ Clean, readable logic<br>✅ Single source of truth<br>✅ Easy to add new exceptions<br>✅ Maintainable<br>❌ Slightly more complex than two-branch |
+
+**Decision**: Implement three-branch naming logic with `no_hyphen_resources` set
+
+**Summary**: The naming system uses three logical branches to handle all Azure resource naming requirements: (1) resources without hyphens and with environment, (2) standard resources with hyphens and environment, (3) standard resources with hyphens but no environment. This handles both the storage account alphanumeric restriction and the environment suffix requirements.
+
+**Implementation**: [modules/common/naming.tf](../modules/common/naming.tf#L64-L83)
+
+```hcl
+locals {
+  # Resources that don't support hyphens (alphanumeric only)
+  no_hyphen_resources = toset(["azurerm_storage_account"])
+
+  naming_patterns = {
+    for resource, include_env in local.resource_include_env :
+    resource => {
+      for workload in local.workloads :
+      workload => lower(join(
+        contains(local.no_hyphen_resources, resource) ? "" : "-",  # Branch selector
+        compact([
+          local.resource_type_map[resource],
+          var.org_name,
+          workload,
+          include_env ? var.environment : null
+        ])
+      ))
+    }
+  }
+}
+```
+
+**Three Naming Branches**:
+
+1. **No-hyphen with environment** (e.g., Storage Accounts):
+   - Pattern: `{prefix}{org}{workload}{env}`
+   - Example: `sta10corpsalesdev` (st + a10corp + sales + dev)
+   - Used for: Azure Storage Accounts, Cosmos DB, etc.
+
+2. **Standard with environment** (most resources):
+   - Pattern: `{prefix}-{org}-{workload}-{env}`
+   - Example: `rg-a10corp-sales-dev` (rg + a10corp + sales + dev)
+   - Used for: Resource Groups, VMs, VNets, etc.
+
+3. **Standard without environment** (global resources):
+   - Pattern: `{prefix}-{org}-{workload}`
+   - Example: `mg-a10corp-sales` (mg + a10corp + sales)
+   - Used for: Management Groups, Policy Groups, etc.
+
+**Configuration Points**:
+
+- `resource_type_map`: Defines CAF prefix for each resource type
+- `resource_include_env`: Controls whether resource includes environment suffix
+- `no_hyphen_resources`: Set of resources requiring alphanumeric-only names
+
+**Benefits**:
+
+1. **Single Source of Truth**: All naming logic in one place
+2. **Easy Exceptions**: Add new resource types to `no_hyphen_resources` set as needed
+3. **Fail-Fast Validation**: `null_resource.validate_caf_naming` ensures consistency
+4. **Readable**: Three clear branches instead of complex nested conditionals
+5. **Maintainable**: Adding new resource types requires two steps (add to map + add to include_env)
+
+**Example Outputs**:
+
+```hcl
+# Storage Account (no hyphens, with environment)
+local.naming_patterns["azurerm_storage_account"]["sales"]  # → "sta10corpsalesdev"
+
+# Resource Group (standard, with environment)
+local.naming_patterns["azurerm_resource_group"]["sales"]   # → "rg-a10corp-sales-dev"
+
+# Management Group (standard, no environment)
+local.naming_patterns["azurerm_management_group"]["sales"] # → "mg-a10corp-sales"
+```
+
+**Rationale**: This approach handles all Azure naming restrictions (character limits, special character restrictions, environment requirements) through a single, maintainable naming function. The three-branch pattern is more elegant than having separate functions and easier to understand than deeply nested conditionals.
+
+---
+
 **Next Steps**:
-See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed implementation plan including:
-1. Infrastructure preparation (Key Vault, Storage Account)
-2. Code refactoring into modules
-3. State migration from monolithic to modular
-4. Testing and validation
-5. Rollout to all environments (dev, stage, prod)
+See [docs/sessions/2025-12-17-three-module-migration.md](sessions/2025-12-17-three-module-migration.md) for three-module migration details.

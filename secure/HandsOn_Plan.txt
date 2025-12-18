@@ -39,6 +39,10 @@ Terraform local vs aGH worklfow - secret/sensitive data injeciton and mgmt
 	2:30 start
 	4:45 stop	
 	6:20 start
+	7:40 stop
+	9:30 start
+	10:30 stop
+	
 	
 
 	

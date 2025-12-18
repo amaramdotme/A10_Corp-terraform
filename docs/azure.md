@@ -1,90 +1,171 @@
 # Azure Environment Information
 
-## Subscription Structure
+**Last Updated**: 2025-12-17
+**Architecture**: Three-module (Common + Foundation + Workloads)
+**Repository**: [github.com:amaramdotme/A10_Corp-terraform.git](https://github.com/amaramdotme/A10_Corp-terraform.git) (private)
 
-### Root/Shared Subscription
-- **Purpose**: Shared/common resources across A10 Corp
-- **State**: Enabled
-- **Is Default**: true
+---
 
-### Sales Subscription
-- **Purpose**: Dedicated subscription for Sales workloads
-- **State**: Enabled
+## Current Deployment Status
 
-### Service Subscription
-- **Purpose**: Dedicated subscription for Service workloads
-- **State**: Enabled
-- **Note**: Previously named "marketing", renamed to "service" for consistency
+### ✅ Pre-Terraform Infrastructure (Manual Setup - Complete)
+
+**Purpose**: Infrastructure to support Terraform itself (never managed by Terraform)
+
+**Location**: Azure Portal (manual creation)
+
+**Resources**:
+- **Resource Group**: `rg-root-iac` (in sub-root subscription)
+- **Key Vault**: `kv-root-terraform` (actual deployed name)
+  - Public network access: Enabled
+  - RBAC: User assigned "Key Vault Secrets Officer" role at RG level
+  - Secrets: 9 total (3 per environment: `terraform-{env}-hq-sub-id`, `terraform-{env}-sales-sub-id`, `terraform-{env}-service-sub-id`)
+- **Storage Account**: `storerootblob` (actual deployed name)
+  - SKU: Standard_LRS
+  - Blob versioning: Enabled
+  - Soft delete: Enabled (7 days)
+  - Containers: `foundation-dev`, `workloads-dev`, `workloads-stage`, `workloads-prod`
+
+---
+
+### ✅ Foundation Module (Deployed - Global)
+
+**Terraform-Managed Resources**: 7 resources deployed
+
+**Deployment Date**: 2025-12-17
+**State File**: `storerootblob/foundation-dev/terraform.tfstate`
+**Module**: `foundation/`
+
+**Resources Deployed**:
+1. ✅ **Management Group**: `mg-a10corp-hq`
+   - ID: `a56fd357-2ecc-46bf-b831-1b86e5fd43bb`
+   - Parent: Tenant Root Group
+
+2. ✅ **Management Group**: `mg-a10corp-sales`
+   - ID: `3ad4b4c9-368c-44c9-8f02-df14e0da8447`
+   - Parent: `mg-a10corp-hq`
+
+3. ✅ **Management Group**: `mg-a10corp-service`
+   - ID: `4b511fa7-48ad-495e-b7d7-bf6cfdc8a22e`
+   - Parent: `mg-a10corp-hq`
+
+4. ✅ **Subscription Association**: `sub-hq` → `mg-a10corp-hq`
+5. ✅ **Subscription Association**: `sub-sales` → `mg-a10corp-sales`
+6. ✅ **Subscription Association**: `sub-service` → `mg-a10corp-service`
+7. ✅ **Validation Resource**: `null_resource.validate_caf_naming`
+
+**Management Group Hierarchy** (Current State):
+```
+Tenant Root Group
+├── sub-root (stays here, never moved)
+└── mg-a10corp-hq (a56fd357-2ecc-46bf-b831-1b86e5fd43bb) ✅
+    ├── sub-hq associated ✅
+    ├── mg-a10corp-sales (3ad4b4c9-368c-44c9-8f02-df14e0da8447) ✅
+    │   └── sub-sales associated ✅
+    └── mg-a10corp-service (4b511fa7-48ad-495e-b7d7-bf6cfdc8a22e) ✅
+        └── sub-service associated ✅
+```
+
+---
+
+### ⏳ Workloads Module (Not Yet Deployed)
+
+**Status**: Code ready, deployment pending
+**Module**: `workloads/`
+**Environments**: dev, stage, prod
+
+**Resource Groups to be Created** (per environment):
+- `rg-a10corp-shared-{env}` in sub-hq
+- `rg-a10corp-sales-{env}` in sub-sales
+- `rg-a10corp-service-{env}` in sub-service
+
+**Example for dev environment**:
+- `rg-a10corp-shared-dev` → sub-hq (eastus)
+- `rg-a10corp-sales-dev` → sub-sales (eastus)
+- `rg-a10corp-service-dev` → sub-service (eastus)
+
+---
+
+## Azure Subscriptions (4 Total)
+
+| Subscription | Purpose | Management Group | Status |
+|--------------|---------|------------------|--------|
+| **sub-root** | Root subscription (hosts Key Vault & Storage) | Tenant Root MG (never moved) | ✅ Active |
+| **sub-hq** | HQ subscription | mg-a10corp-hq | ✅ Associated |
+| **sub-sales** | Sales subscription | mg-a10corp-sales | ✅ Associated |
+| **sub-service** | Service subscription | mg-a10corp-service | ✅ Associated |
+
+**Security Note**: Subscription IDs are stored in Azure Key Vault (`kv-root-terraform`) and fetched via Terraform data sources. Zero sensitive values in git repository.
+
+---
+
+## Naming Convention
+
+Following Azure Cloud Adoption Framework (CAF) standards:
+
+### Standard Resources (with hyphens)
+- **Management Groups**: `mg-{org}-{workload}` (e.g., `mg-a10corp-sales`)
+  - No environment suffix (management groups are global)
+- **Resource Groups**: `rg-{org}-{workload}-{env}` (e.g., `rg-a10corp-sales-dev`)
+  - Includes environment suffix (dev/stage/prod)
+
+### No-Hyphen Resources (alphanumeric only)
+- **Storage Accounts**: `st{org}{workload}{env}` (e.g., `sta10corpsalesdev`)
+  - Azure requirement: alphanumeric only, no hyphens
+
+**Implementation**: All naming logic centralized in [modules/common/naming.tf](../modules/common/naming.tf) using three-branch naming system (see [DECISIONS.md - Decision 16](DECISIONS.md#decision-16-three-branch-naming-system-for-azure-resource-restrictions)).
+
+**Access Pattern**: `local.naming_patterns["azurerm_resource_group"]["sales"]`
+
+---
 
 ## Authentication
 
-- **Environment**: AzureCloud
-- **Subscription IDs, Tenant IDs**: Stored in `.tfvars` files (not committed to git) and GitHub Secrets for CI/CD
+### Local Development
+- **Method**: Azure CLI (`az login`)
+- **Environment Variables**: `.env` file (gitignored)
+  - `ARM_SUBSCRIPTION_ID`: sub-root (where Key Vault lives)
+  - `ARM_TENANT_ID`: Tenant ID
 
-## Target Architecture
+### CI/CD (GitHub Actions)
+- **Method**: OIDC Workload Identity Federation (no long-lived secrets)
+- **Provider**: `azure/login@v1` action
+- **Secrets**: Non-sensitive IDs only (client ID, tenant ID, subscription ID)
+- **Benefits**: Zero secrets in GitHub, tokens expire automatically
 
-### Management Group Hierarchy
+See [DECISIONS.md - Decision 9](DECISIONS.md#decision-9-cicd-authentication-method) for OIDC implementation details.
 
-```
-Tenant Root Group
-└── mg-a10corp-hq (A10 Corporation HQ)
-    ├── Associated Subscription: Shared
-    ├── mg-a10corp-sales (Sales Business Unit)
-    │   └── Associated Subscription: Sales
-    └── mg-a10corp-service (Service Business Unit)
-        └── Associated Subscription: Service
-```
+---
 
-### Resource Groups (Multi-Environment)
+## State Management
 
-Per environment (dev, stage, prod), the following resource groups are created:
+### Foundation
+- **Backend**: Azure Storage (`storerootblob`)
+- **Container**: `foundation-dev`
+- **State File**: `terraform.tfstate`
+- **Locking**: Enabled via Azure Storage lease
 
-- **Shared Subscription**:
-  - `rg-a10corp-shared-{env}` (e.g., `rg-a10corp-shared-dev`)
+### Workloads
+- **Backend**: Azure Storage (`storerootblob`)
+- **Containers**: `workloads-dev`, `workloads-stage`, `workloads-prod`
+- **State Files**: 3 separate files (one per environment)
+- **Locking**: Enabled via Azure Storage lease
 
-- **Sales Subscription**:
-  - `rg-a10corp-sales-{env}` (e.g., `rg-a10corp-sales-dev`)
+---
 
-- **Service Subscription**:
-  - `rg-a10corp-service-{env}` (e.g., `rg-a10corp-service-dev`)
+## Next Steps
 
-**Current Deployment Status**: 🔴 All infrastructure destroyed (2025-12-17)
+1. ⏳ **Deploy Workloads Module** (dev environment)
+2. ⏳ Test workloads deployment in dev
+3. ⏳ Promote to stage environment
+4. ⏳ Promote to prod environment
 
-### Deployed Components
+---
 
-**Infrastructure Status**: All Terraform-managed resources have been destroyed.
+## References
 
-**What was destroyed:**
-1. **Management Groups** ❌:
-   - `mg-a10corp-hq` (A10 Corporation HQ management group)
-   - `mg-a10corp-sales` (Sales business unit)
-   - `mg-a10corp-service` (Service business unit)
-
-2. **Subscription Associations** ❌:
-   - All subscriptions moved back to Tenant Root Group automatically
-
-3. **Resource Groups (Dev Environment)** ❌:
-   - `rg-a10corp-shared-dev` (was in eastus, shared subscription)
-   - `rg-a10corp-sales-dev` (was in eastus, sales subscription)
-   - `rg-a10corp-service-dev` (was in eastus, service subscription)
-
-**What still exists:**
-- ✅ All Azure subscriptions (billing accounts preserved)
-- ✅ Terraform configuration code (ready to redeploy)
-
-### Naming Convention
-
-Following Azure Cloud Adoption Framework (CAF) standards:
-- **Management Groups**: `mg-{org}-{workload}` (e.g., `mg-a10corp-sales`)
-  - No environment suffix (management groups are environment-agnostic)
-- **Resource Groups**: `rg-{org}-{workload}-{env}` (e.g., `rg-a10corp-sales-dev`)
-  - Includes environment suffix (dev/stage/prod)
-- **Delimiter**: Hyphen (-) for readability
-- **Case**: Lowercase for consistency
-
-**Implementation**: All naming logic is centralized in [terraform/naming.tf](terraform/naming.tf) using Terraform locals. Access pattern: `local.naming_patterns["azurerm_resource_group"]["sales"]`
-
-## Notes
-
-- This subscription is currently set as the default subscription for Azure CLI operations
-- All Terraform deployments will use this subscription unless otherwise specified
+- [Architecture Decisions](DECISIONS.md)
+- [Terraform Commands](TERRAFORM_COMMANDS.md)
+- [Foundation Module README](../foundation/README.md)
+- [Workloads Module README](../workloads/README.md)
+- [Session History](sessions/)

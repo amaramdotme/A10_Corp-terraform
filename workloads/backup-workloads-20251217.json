@@ -1,0 +1,565 @@
+{
+  "version": 4,
+  "terraform_version": "1.14.2",
+  "serial": 3,
+  "lineage": "d0d37eba-5525-1cf8-2df8-3b077e743d32",
+  "outputs": {
+    "environment": {
+      "value": "dev",
+      "type": "string"
+    },
+    "resource_groups": {
+      "value": {
+        "sales": {
+          "id": "/subscriptions/385c6fcb-c70b-4aed-b745-76bd608303d7/resourceGroups/rg-a10corp-sales-dev",
+          "name": "rg-a10corp-sales-dev"
+        },
+        "service": {
+          "id": "/subscriptions/aef7255d-42b5-4f84-81f2-202191e8c7d1/resourceGroups/rg-a10corp-service-dev",
+          "name": "rg-a10corp-service-dev"
+        },
+        "shared": {
+          "id": "/subscriptions/da1ba383-2bf5-4ee9-8b5f-fc6effb0a100/resourceGroups/rg-a10corp-shared-dev",
+          "name": "rg-a10corp-shared-dev"
+        }
+      },
+      "type": [
+        "object",
+        {
+          "sales": [
+            "object",
+            {
+              "id": "string",
+              "name": "string"
+            }
+          ],
+          "service": [
+            "object",
+            {
+              "id": "string",
+              "name": "string"
+            }
+          ],
+          "shared": [
+            "object",
+            {
+              "id": "string",
+              "name": "string"
+            }
+          ]
+        }
+      ]
+    },
+    "workload_summary": {
+      "value": {
+        "environment": "dev",
+        "naming_patterns": {
+          "azurerm_management_group": {
+            "hq": "mg-a10corp-hq",
+            "sales": "mg-a10corp-sales",
+            "service": "mg-a10corp-service",
+            "shared": "mg-a10corp-shared"
+          },
+          "azurerm_policy_group": {
+            "hq": "pg-a10corp-hq",
+            "sales": "pg-a10corp-sales",
+            "service": "pg-a10corp-service",
+            "shared": "pg-a10corp-shared"
+          },
+          "azurerm_resource_group": {
+            "hq": "rg-a10corp-hq-dev",
+            "sales": "rg-a10corp-sales-dev",
+            "service": "rg-a10corp-service-dev",
+            "shared": "rg-a10corp-shared-dev"
+          },
+          "azurerm_storage_account": {
+            "hq": "sta10corphqdev",
+            "sales": "sta10corpsalesdev",
+            "service": "sta10corpservicedev",
+            "shared": "sta10corpshareddev"
+          },
+          "azurerm_virtual_machine": {
+            "hq": "vm-a10corp-hq-dev",
+            "sales": "vm-a10corp-sales-dev",
+            "service": "vm-a10corp-service-dev",
+            "shared": "vm-a10corp-shared-dev"
+          }
+        },
+        "resource_groups": {
+          "sales": {
+            "id": "/subscriptions/385c6fcb-c70b-4aed-b745-76bd608303d7/resourceGroups/rg-a10corp-sales-dev",
+            "name": "rg-a10corp-sales-dev"
+          },
+          "service": {
+            "id": "/subscriptions/aef7255d-42b5-4f84-81f2-202191e8c7d1/resourceGroups/rg-a10corp-service-dev",
+            "name": "rg-a10corp-service-dev"
+          },
+          "shared": {
+            "id": "/subscriptions/da1ba383-2bf5-4ee9-8b5f-fc6effb0a100/resourceGroups/rg-a10corp-shared-dev",
+            "name": "rg-a10corp-shared-dev"
+          }
+        }
+      },
+      "type": [
+        "object",
+        {
+          "environment": "string",
+          "naming_patterns": [
+            "object",
+            {
+              "azurerm_management_group": [
+                "object",
+                {
+                  "hq": "string",
+                  "sales": "string",
+                  "service": "string",
+                  "shared": "string"
+                }
+              ],
+              "azurerm_policy_group": [
+                "object",
+                {
+                  "hq": "string",
+                  "sales": "string",
+                  "service": "string",
+                  "shared": "string"
+                }
+              ],
+              "azurerm_resource_group": [
+                "object",
+                {
+                  "hq": "string",
+                  "sales": "string",
+                  "service": "string",
+                  "shared": "string"
+                }
+              ],
+              "azurerm_storage_account": [
+                "object",
+                {
+                  "hq": "string",
+                  "sales": "string",
+                  "service": "string",
+                  "shared": "string"
+                }
+              ],
+              "azurerm_virtual_machine": [
+                "object",
+                {
+                  "hq": "string",
+                  "sales": "string",
+                  "service": "string",
+                  "shared": "string"
+                }
+              ]
+            }
+          ],
+          "resource_groups": [
+            "object",
+            {
+              "sales": [
+                "object",
+                {
+                  "id": "string",
+                  "name": "string"
+                }
+              ],
+              "service": [
+                "object",
+                {
+                  "id": "string",
+                  "name": "string"
+                }
+              ],
+              "shared": [
+                "object",
+                {
+                  "id": "string",
+                  "name": "string"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "resources": [
+    {
+      "module": "module.common",
+      "mode": "data",
+      "type": "azurerm_client_config",
+      "name": "current",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "client_id": "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+            "id": "Y2xpZW50Q29uZmlncy9jbGllbnRJZD0wNGIwNzc5NS04ZGRiLTQ2MWEtYmJlZS0wMmY5ZTFiZjdiNDY7b2JqZWN0SWQ9MDM4NjljMmUtYjk1YS00ZGUzLWJiYjAtMWYwZGU3Mzg1YmYyO3N1YnNjcmlwdGlvbklkPWZkYjI5N2E5LTJlY2UtNDY5Yy04MDhkLWE4MjI3MjU5ZjZlODt0ZW5hbnRJZD04MTE2ZmFkMC01MDMyLTQ2M2UtYjkxMS1jYzZkMWQ3NTAwMWQ=",
+            "object_id": "03869c2e-b95a-4de3-bbb0-1f0de7385bf2",
+            "subscription_id": "fdb297a9-2ece-469c-808d-a8227259f6e8",
+            "tenant_id": "8116fad0-5032-463e-b911-cc6d1d75001d",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "module": "module.common",
+      "mode": "data",
+      "type": "azurerm_key_vault",
+      "name": "terraform",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "access_policy": [],
+            "enable_rbac_authorization": true,
+            "enabled_for_deployment": false,
+            "enabled_for_disk_encryption": false,
+            "enabled_for_template_deployment": false,
+            "id": "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform",
+            "location": "eastus",
+            "name": "kv-root-terraform",
+            "network_acls": [
+              {
+                "bypass": "None",
+                "default_action": "Allow",
+                "ip_rules": [],
+                "virtual_network_subnet_ids": []
+              }
+            ],
+            "public_network_access_enabled": true,
+            "purge_protection_enabled": false,
+            "rbac_authorization_enabled": true,
+            "resource_group_name": "rg-root-iac",
+            "sku_name": "standard",
+            "tags": {
+              "CostCenter": "root",
+              "Environment": "shared"
+            },
+            "tenant_id": "8116fad0-5032-463e-b911-cc6d1d75001d",
+            "timeouts": null,
+            "vault_uri": "https://kv-root-terraform.vault.azure.net/"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "module": "module.common",
+      "mode": "data",
+      "type": "azurerm_key_vault_secret",
+      "name": "hq_subscription_id",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "content_type": "",
+            "expiration_date": "",
+            "id": "https://kv-root-terraform.vault.azure.net/secrets/terraform-dev-hq-sub-id/ff9552fb859f435e80926d071b1d134e",
+            "key_vault_id": "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform",
+            "name": "terraform-dev-hq-sub-id",
+            "not_before_date": "",
+            "resource_id": "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform/secrets/terraform-dev-hq-sub-id/versions/ff9552fb859f435e80926d071b1d134e",
+            "resource_versionless_id": "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform/secrets/terraform-dev-hq-sub-id",
+            "tags": {
+              "file-encoding": "utf-8"
+            },
+            "timeouts": null,
+            "value": "da1ba383-2bf5-4ee9-8b5f-fc6effb0a100",
+            "version": "ff9552fb859f435e80926d071b1d134e",
+            "versionless_id": "https://kv-root-terraform.vault.azure.net/secrets/terraform-dev-hq-sub-id"
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ]
+          ],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "module": "module.common",
+      "mode": "data",
+      "type": "azurerm_key_vault_secret",
+      "name": "sales_subscription_id",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "content_type": "",
+            "expiration_date": "",
+            "id": "https://kv-root-terraform.vault.azure.net/secrets/terraform-dev-sales-sub-id/3c4b4b0706f64eb08befc3372f79ad06",
+            "key_vault_id": "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform",
+            "name": "terraform-dev-sales-sub-id",
+            "not_before_date": "",
+            "resource_id": "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform/secrets/terraform-dev-sales-sub-id/versions/3c4b4b0706f64eb08befc3372f79ad06",
+            "resource_versionless_id": "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform/secrets/terraform-dev-sales-sub-id",
+            "tags": {
+              "file-encoding": "utf-8"
+            },
+            "timeouts": null,
+            "value": "385c6fcb-c70b-4aed-b745-76bd608303d7",
+            "version": "3c4b4b0706f64eb08befc3372f79ad06",
+            "versionless_id": "https://kv-root-terraform.vault.azure.net/secrets/terraform-dev-sales-sub-id"
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ]
+          ],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "module": "module.common",
+      "mode": "data",
+      "type": "azurerm_key_vault_secret",
+      "name": "service_subscription_id",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "content_type": "",
+            "expiration_date": "",
+            "id": "https://kv-root-terraform.vault.azure.net/secrets/terraform-dev-service-sub-id/cbf2e7a3b1dd46c1b75b92824d87d55d",
+            "key_vault_id": "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform",
+            "name": "terraform-dev-service-sub-id",
+            "not_before_date": "",
+            "resource_id": "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform/secrets/terraform-dev-service-sub-id/versions/cbf2e7a3b1dd46c1b75b92824d87d55d",
+            "resource_versionless_id": "/subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform/secrets/terraform-dev-service-sub-id",
+            "tags": {
+              "file-encoding": "utf-8"
+            },
+            "timeouts": null,
+            "value": "aef7255d-42b5-4f84-81f2-202191e8c7d1",
+            "version": "cbf2e7a3b1dd46c1b75b92824d87d55d",
+            "versionless_id": "https://kv-root-terraform.vault.azure.net/secrets/terraform-dev-service-sub-id"
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "value"
+              }
+            ]
+          ],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "module": "module.common",
+      "mode": "managed",
+      "type": "null_resource",
+      "name": "validate_caf_naming",
+      "provider": "provider[\"registry.terraform.io/hashicorp/null\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "1078231016",
+            "triggers": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "module": "module.workloads",
+      "mode": "managed",
+      "type": "azurerm_resource_group",
+      "name": "sales",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"].sales",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "/subscriptions/385c6fcb-c70b-4aed-b745-76bd608303d7/resourceGroups/rg-a10corp-sales-dev",
+            "location": "eastus",
+            "managed_by": "",
+            "name": "rg-a10corp-sales-dev",
+            "tags": {
+              "CostCenter": "Engineering",
+              "ManagedBy": "Terraform",
+              "Owner": "A10Corp",
+              "Workload": "Sales"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "identity": {
+            "name": "rg-a10corp-sales-dev",
+            "subscription_id": "385c6fcb-c70b-4aed-b745-76bd608303d7"
+          },
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo1NDAwMDAwMDAwMDAwLCJkZWxldGUiOjU0MDAwMDAwMDAwMDAsInJlYWQiOjMwMDAwMDAwMDAwMCwidXBkYXRlIjo1NDAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "module.common.data.azurerm_key_vault.terraform",
+            "module.common.data.azurerm_key_vault_secret.sales_subscription_id"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.workloads",
+      "mode": "managed",
+      "type": "azurerm_resource_group",
+      "name": "service",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"].service",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "/subscriptions/aef7255d-42b5-4f84-81f2-202191e8c7d1/resourceGroups/rg-a10corp-service-dev",
+            "location": "eastus",
+            "managed_by": "",
+            "name": "rg-a10corp-service-dev",
+            "tags": {
+              "CostCenter": "Engineering",
+              "ManagedBy": "Terraform",
+              "Owner": "A10Corp",
+              "Workload": "Service"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "identity": {
+            "name": "rg-a10corp-service-dev",
+            "subscription_id": "aef7255d-42b5-4f84-81f2-202191e8c7d1"
+          },
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo1NDAwMDAwMDAwMDAwLCJkZWxldGUiOjU0MDAwMDAwMDAwMDAsInJlYWQiOjMwMDAwMDAwMDAwMCwidXBkYXRlIjo1NDAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "module.common.data.azurerm_key_vault.terraform",
+            "module.common.data.azurerm_key_vault_secret.service_subscription_id"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "module.workloads",
+      "mode": "managed",
+      "type": "azurerm_resource_group",
+      "name": "shared_common",
+      "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"].hq",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "/subscriptions/da1ba383-2bf5-4ee9-8b5f-fc6effb0a100/resourceGroups/rg-a10corp-shared-dev",
+            "location": "eastus",
+            "managed_by": "",
+            "name": "rg-a10corp-shared-dev",
+            "tags": {
+              "CostCenter": "Engineering",
+              "ManagedBy": "Terraform",
+              "Owner": "A10Corp",
+              "Purpose": "Common resources across A10 Corp",
+              "Workload": "Shared"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "identity": {
+            "name": "rg-a10corp-shared-dev",
+            "subscription_id": "da1ba383-2bf5-4ee9-8b5f-fc6effb0a100"
+          },
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo1NDAwMDAwMDAwMDAwLCJkZWxldGUiOjU0MDAwMDAwMDAwMDAsInJlYWQiOjMwMDAwMDAwMDAwMCwidXBkYXRlIjo1NDAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "module.common.data.azurerm_key_vault.terraform",
+            "module.common.data.azurerm_key_vault_secret.hq_subscription_id"
+          ]
+        }
+      ]
+    }
+  ],
+  "check_results": [
+    {
+      "object_kind": "var",
+      "config_addr": "var.environment",
+      "status": "pass",
+      "objects": [
+        {
+          "object_addr": "var.environment",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "object_kind": "resource",
+      "config_addr": "module.common.null_resource.validate_caf_naming",
+      "status": "pass",
+      "objects": [
+        {
+          "object_addr": "module.common.null_resource.validate_caf_naming",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "object_kind": "var",
+      "config_addr": "module.common.var.location",
+      "status": "pass",
+      "objects": [
+        {
+          "object_addr": "module.common.var.location",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "object_kind": "var",
+      "config_addr": "module.common.var.org_name",
+      "status": "pass",
+      "objects": [
+        {
+          "object_addr": "module.common.var.org_name",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "object_kind": "var",
+      "config_addr": "module.common.var.common_tags",
+      "status": "pass",
+      "objects": [
+        {
+          "object_addr": "module.common.var.common_tags",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "object_kind": "var",
+      "config_addr": "module.common.var.environment",
+      "status": "pass",
+      "objects": [
+        {
+          "object_addr": "module.common.var.environment",
+          "status": "pass"
+        }
+      ]
+    }
+  ]
+}
+
