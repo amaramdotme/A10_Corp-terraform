@@ -186,7 +186,29 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
           ARM_USE_OIDC: true
 
-      - name: Upload Destroy Plan Artifact
+      - name: Generate Human-Readable Destroy Plan
+        run: terraform show -no-color foundation-destroy.tfplan > foundation-destroy-plan.txt
+        working-directory: ./foundation
+
+      - name: Upload Destroy Plan to Azure Storage (Audit Trail)
+        run: |
+          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+          BLOB_NAME="plans/foundation-destroy-${TIMESTAMP}-${{ github.run_number }}.txt"
+          az storage blob upload \
+            --account-name storerootblob \
+            --container-name foundation \
+            --name "$BLOB_NAME" \
+            --file foundation-destroy-plan.txt \
+            --auth-mode login
+          echo "✅ Destroy plan uploaded to Azure Storage: $BLOB_NAME"
+        working-directory: ./foundation
+        env:
+          ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+
+      - name: Upload Destroy Plan Artifact (For Apply Job)
         uses: actions/upload-artifact@v4
         with:
           name: foundation-destroy-tfplan
