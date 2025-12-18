@@ -1,0 +1,321 @@
+================================================================================
+TERRAFORM COMMANDS - THREE-MODULE ARCHITECTURE
+================================================================================
+
+###### QUICK START HERE ######
+--- Init ---
+cd foundation/
+source ../.env && terraform init -backend-config="environments/backend.hcl"
+
+#remove backend.tf to store locally
+source ../.env && terraform init 
+
+--- Plan & Apply ---
+terraform fmt -recursive && terraform validate
+
+terraform plan -out=foundation.tfplan
+terraform apply foundation.tfplan
+
+--- State ---
+terraform state list
+terraform state show module.foundation.azurerm_management_group.hq
+terraform state pull > backup-foundation-$(date +%Y%m%d).json
+
+--- Import ---
+terraform import \
+  module.foundation.azurerm_management_group.hq \
+  /providers/Microsoft.Management/managementGroups/mg-a10corp-hq
+
+--- Outputs ---
+terraform output
+terraform output -json > foundation-outputs.json
+
+
+--- Destroy ---
+source ../.env && terraform destroy 
+
+
+===============================================================================
+BACKGROUND INFO 
+===============================================================================
+Repository: A10_Corp-terraform
+Location: terraform_iac/
+Updated: 2025-12-17
+
+Architecture:
+- modules/common/      → Shared naming logic (no state, library only)
+- modules/foundation/  → Management groups code
+- modules/workloads/   → Resource groups code
+- foundation/          → Foundation root caller (GLOBAL - no environments)
+- workloads/           → Workloads root caller (PER-ENVIRONMENT)
+
+================================================================================
+PREREQUISITES (Run Once Per Session)
+================================================================================
+
+az login
+source .env                      # Sets ARM_SUBSCRIPTION_ID and ARM_TENANT_ID
+~/bin/terraform --version
+
+Note: Run 'source .env' before ANY terraform command in foundation/ or workloads/
+
+================================================================================
+COMMON MODULE (Testing Only)
+================================================================================
+
+cd modules/common/
+terraform init
+terraform console
+> local.naming_patterns["azurerm_resource_group"]["sales"]
+> exit
+
+================================================================================
+FOUNDATION (Global - Deploy Once)
+================================================================================
+
+Directory: foundation/
+Backend: storerootblob/foundation-dev
+State Files: 1 (global)
+Environment Files: NONE (foundation is global)
+
+Switches Required:
+1. source .env              ✓ (sets ARM_SUBSCRIPTION_ID, ARM_TENANT_ID)
+2. backend config           ✓ (foundation.backend.hcl OR inline)
+3. var-file                 ✗ (NOT used - foundation is global)
+
+###### START HERE ######
+--- Init ---
+cd foundation/
+source ../.env && terraform init -backend-config="environments/backend.hcl"
+
+#remove backend.tf to store locally
+source ../.env && terraform init 
+
+--- Plan & Apply ---
+terraform fmt -recursive && terraform validate
+
+terraform plan -out=foundation.tfplan
+terraform apply foundation.tfplan
+
+--- State ---
+terraform state list
+terraform state show module.foundation.azurerm_management_group.hq
+terraform state pull > backup-foundation-$(date +%Y%m%d).json
+
+--- Import ---
+terraform import \
+  module.foundation.azurerm_management_group.hq \
+  /providers/Microsoft.Management/managementGroups/mg-a10corp-hq
+
+--- Outputs ---
+terraform output
+terraform output -json > foundation-outputs.json
+
+
+--- Destroy ---
+source ../.env && terraform destroy 
+
+================================================================================
+WORKLOADS (Per-Environment)
+================================================================================
+
+Directory: workloads/
+Backend: storerootblob/workloads-{env}
+State Files: 3 (dev, stage, prod)
+Environment Files: environments/dev.tfvars, stage.tfvars, prod.tfvars
+
+Switches Required:
+1. source .env              ✓ (sets ARM_SUBSCRIPTION_ID, ARM_TENANT_ID)
+2. backend config           ✓ (dev.backend.hcl OR inline per environment)
+3. var-file                 ✓ (environments/dev.tfvars, stage.tfvars, prod.tfvars)
+
+--- Init (Switch Environments) ---
+
+cd workloads/
+source ../.env
+
+# Dev (using .hcl file)
+terraform init -reconfigure -backend-config="dev.backend.hcl"
+
+# Dev (using inline)
+terraform init -reconfigure \
+  -backend-config="storage_account_name=storerootblob" \
+  -backend-config="container_name=workloads-dev" \
+  -backend-config="key=terraform.tfstate"
+
+# Stage (using .hcl file)
+terraform init -reconfigure -backend-config="stage.backend.hcl"
+
+# Stage (using inline)
+terraform init -reconfigure \
+  -backend-config="storage_account_name=storerootblob" \
+  -backend-config="container_name=workloads-stage" \
+  -backend-config="key=terraform.tfstate"
+
+# Prod (using .hcl file)
+terraform init -reconfigure -backend-config="prod.backend.hcl"
+
+# Prod (using inline)
+terraform init -reconfigure \
+  -backend-config="storage_account_name=storerootblob" \
+  -backend-config="container_name=workloads-prod" \
+  -backend-config="key=terraform.tfstate"
+
+--- Plan & Apply ---
+
+# Dev
+terraform fmt -recursive
+terraform validate
+terraform plan -var-file="environments/dev.tfvars" -out=workloads-dev.tfplan
+terraform apply workloads-dev.tfplan
+
+# Stage
+terraform plan -var-file="environments/stage.tfvars" -out=workloads-stage.tfplan
+terraform apply workloads-stage.tfplan
+
+# Prod
+terraform plan -var-file="environments/prod.tfvars" -out=workloads-prod.tfplan
+terraform apply workloads-prod.tfplan
+
+--- Destroy (Environment-Specific) ---
+
+# Dev
+terraform destroy -var-file="environments/dev.tfvars"
+
+# Stage
+terraform destroy -var-file="environments/stage.tfvars"
+
+# Prod
+terraform destroy -var-file="environments/prod.tfvars"
+
+--- State ---
+
+terraform state list
+terraform state show module.workloads.azurerm_resource_group.sales
+terraform state pull > backup-workloads-$(date +%Y%m%d).json
+
+--- Import ---
+
+terraform import \
+  -var-file="environments/dev.tfvars" \
+  module.workloads.azurerm_resource_group.sales \
+  /subscriptions/SUB_ID/resourceGroups/rg-a10corp-sales-dev
+
+--- Outputs ---
+
+terraform output
+terraform output -json > workloads-outputs.json
+
+================================================================================
+COMPLETE DEPLOYMENT WORKFLOW
+================================================================================
+
+# 1. Deploy Foundation (once, global)
+cd foundation/
+source ../.env                   # Switch 1: Load env vars
+terraform init -backend-config="foundation.backend.hcl"  # Switch 2: Backend
+terraform plan -out=foundation.tfplan                     # Switch 3: N/A (no var-file)
+terraform apply foundation.tfplan
+
+# 2. Deploy Workloads Dev
+cd ../workloads/
+source ../.env                                            # Switch 1: Load env vars
+terraform init -reconfigure -backend-config="dev.backend.hcl"  # Switch 2: Backend (dev)
+terraform plan -var-file="environments/dev.tfvars" -out=workloads-dev.tfplan  # Switch 3: Var-file (dev)
+terraform apply workloads-dev.tfplan
+
+# 3. Deploy Workloads Stage
+source ../.env                                            # Switch 1: Load env vars
+terraform init -reconfigure -backend-config="stage.backend.hcl"  # Switch 2: Backend (stage)
+terraform plan -var-file="environments/stage.tfvars" -out=workloads-stage.tfplan  # Switch 3: Var-file (stage)
+terraform apply workloads-stage.tfplan
+
+# 4. Deploy Workloads Prod
+source ../.env                                            # Switch 1: Load env vars
+terraform init -reconfigure -backend-config="prod.backend.hcl"  # Switch 2: Backend (prod)
+terraform plan -var-file="environments/prod.tfvars" -out=workloads-prod.tfplan  # Switch 3: Var-file (prod)
+terraform apply workloads-prod.tfplan
+
+================================================================================
+ENVIRONMENT SWITCHING (Workloads Only)
+================================================================================
+
+cd workloads/
+source ../.env  # Always load env vars first
+
+# Switch to Dev (all 3 switches)
+terraform init -reconfigure -backend-config="dev.backend.hcl"      # Switch 2: Backend
+terraform plan -var-file="environments/dev.tfvars"                 # Switch 3: Var-file
+terraform apply -var-file="environments/dev.tfvars"
+
+# Switch to Stage (all 3 switches)
+terraform init -reconfigure -backend-config="stage.backend.hcl"    # Switch 2: Backend
+terraform plan -var-file="environments/stage.tfvars"               # Switch 3: Var-file
+terraform apply -var-file="environments/stage.tfvars"
+
+# Switch to Prod (all 3 switches)
+terraform init -reconfigure -backend-config="prod.backend.hcl"     # Switch 2: Backend
+terraform plan -var-file="environments/prod.tfvars"                # Switch 3: Var-file
+terraform apply -var-file="environments/prod.tfvars"
+
+================================================================================
+QUICK REFERENCE
+================================================================================
+
+Foundation (Global - 2 switches):
+  cd foundation/
+  source ../.env                                              # 1. Env vars
+  terraform init -backend-config="foundation.backend.hcl"     # 2. Backend
+  terraform plan -out=foundation.tfplan                       # 3. N/A
+  terraform apply foundation.tfplan
+
+Workloads (Dev - 3 switches):
+  cd workloads/
+  source ../.env                                              # 1. Env vars
+  terraform init -reconfigure -backend-config="dev.backend.hcl"  # 2. Backend
+  terraform plan -var-file="environments/dev.tfvars" -out=dev.tfplan  # 3. Var-file
+  terraform apply dev.tfplan
+
+Workloads (Stage - 3 switches):
+  cd workloads/
+  source ../.env                                              # 1. Env vars
+  terraform init -reconfigure -backend-config="stage.backend.hcl"  # 2. Backend
+  terraform plan -var-file="environments/stage.tfvars" -out=stage.tfplan  # 3. Var-file
+  terraform apply stage.tfplan
+
+Workloads (Prod - 3 switches):
+  cd workloads/
+  source ../.env                                              # 1. Env vars
+  terraform init -reconfigure -backend-config="prod.backend.hcl"  # 2. Backend
+  terraform plan -var-file="environments/prod.tfvars" -out=prod.tfplan  # 3. Var-file
+  terraform apply prod.tfplan
+
+================================================================================
+KEY POINTS
+================================================================================
+
+THREE SWITCHES SUMMARY:
+
+Foundation (2/3 switches):
+  1. source .env              ✓ Always required
+  2. backend config           ✓ foundation.backend.hcl (or inline)
+  3. var-file                 ✗ NOT used (foundation is global)
+
+Workloads (3/3 switches):
+  1. source .env              ✓ Always required
+  2. backend config           ✓ dev/stage/prod.backend.hcl (or inline per env)
+  3. var-file                 ✓ environments/dev/stage/prod.tfvars
+
+NOTES:
+✓ Always run 'source .env' first (sets ARM_SUBSCRIPTION_ID, ARM_TENANT_ID)
+✓ Backend configs can be .hcl files OR inline -backend-config parameters
+✓ Foundation uses 2 switches (no var-file needed)
+✓ Workloads use all 3 switches (environment-specific)
+✓ Switch environments: Change backend config + var-file together
+✓ Common module: Test only (terraform console in modules/common/)
+
+State Files:
+- foundation-dev (1 file, global)
+- workloads-dev, workloads-stage, workloads-prod (3 files)
+
+================================================================================

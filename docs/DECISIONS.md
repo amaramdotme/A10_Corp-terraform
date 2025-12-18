@@ -787,14 +787,134 @@ The implementation prioritized:
 7. **Security** - Sensitive data in Key Vault, non-sensitive in Git
 
 **Key Architectural Outcomes**:
-- **Two-module architecture**: Foundation (MGs) + Workloads (RGs)
+- **Three-module architecture**: Common (shared logic) + Foundation (MGs) + Workloads (RGs)
+- **Centralized configuration**: Common module contains all variables, naming, and Key Vault data sources
 - **Management Group hierarchy**: Tenant Root → mg-a10corp-hq → (mg-a10corp-sales, mg-a10corp-service)
-- **Environment-based naming**: `rg-{org}-{workload}-{environment}` format
-- **Multi-environment support**: Separate .tfvars and state files per environment
+- **Environment-based naming**: `rg-{org}-{workload}-{environment}` format for workloads, no environment for foundation
+- **Multi-environment support**: Workloads have dev/stage/prod variants, foundation is global
 - **CAF-compliant naming**: Pure Terraform locals (no external providers)
-- **Hybrid .tfvars storage**: Non-sensitive in Git, sensitive in Key Vault
+- **No sensitive values in Git**: All subscription IDs fetched from Key Vault by common module
 - **OIDC authentication**: Zero long-lived secrets in GitHub
-- **Separate state files**: `foundation-<env>.tfstate` and `workloads-<env>.tfstate`
+- **Separate state files**: `foundation.tfstate` (single) and `workloads-<env>.tfstate` (per environment)
+
+---
+
+## Decision 15: Three-Module Architecture with Centralized Common Module
+
+**Date**: 2025-12-17
+
+**Context**: After implementing the initial two-module architecture (foundation + workloads), we identified significant duplication in variable definitions, naming logic, and Key Vault data sources between modules.
+
+| Option | Description | Trade-offs |
+|--------|-------------|------------|
+| **Two-module architecture (initial)** | Foundation and workloads modules, each with own variables and data sources | ❌ Duplicated variable definitions<br>❌ Duplicated Key Vault data sources<br>❌ Duplicated naming logic<br>❌ Risk of configuration drift<br>✅ Simple to understand |
+| **Three-module architecture (chosen)** | Common module centralizes all shared logic, foundation and workloads are thin wrappers | ✅ Single source of truth<br>✅ No duplication<br>✅ Impossible for modules to drift<br>✅ Common module is independently testable<br>✅ Simpler root callers<br>❌ Slightly more complex initial setup |
+| **Four-module architecture** | Add separate data-sources module | ❌ Over-engineered<br>❌ Additional complexity with minimal benefit |
+
+**Decision**: Implement three-module architecture with common module centralizing all shared logic
+
+**Summary**: The common module became the "brain" of the infrastructure, containing all variable definitions (with defaults), Key Vault data sources, and naming patterns. Foundation and workloads became thin wrappers that simply call common and use its outputs.
+
+**Implementation**:
+
+### Module 1: Common (`modules/common/`)
+**Centralizes everything shared:**
+- `variables.tf` - ALL variable definitions with defaults (environment, location, org_name, common_tags)
+- `naming.tf` - CAF naming patterns (resource_type_map, naming_patterns)
+- `data-sources.tf` - Key Vault data sources (fetches subscription IDs)
+- `outputs.tf` - Exposes naming_patterns, subscription IDs, tenant_id, all variables
+
+**Key insight**: Environment variable defaults to "" for foundation (no environment suffix in MG names)
+
+### Module 2: Foundation (`modules/foundation/`)
+**Minimal - just MG logic:**
+- `main.tf` - Management groups
+- `subscriptions.tf` - Subscription associations
+- `variables.tf` - Type declarations only (no defaults) - receives from parent
+- `outputs.tf` - MG IDs and names
+
+**No data sources, no variable defaults - everything from common module**
+
+### Module 3: Workloads (`modules/workloads/`)
+**Minimal - just RG logic:**
+- `main.tf` - Resource groups
+- `variables.tf` - Type declarations only (no defaults) - receives from parent
+- `outputs.tf` - RG IDs and names
+
+**No data sources, no variable defaults - everything from common module**
+
+### Root Callers
+
+**Foundation (`foundation/`):**
+```hcl
+# No variables.tf - uses common module defaults
+# No data-sources.tf - common module fetches from Key Vault
+# No .tfvars files - no environment variants
+
+# main.tf
+module "common" {
+  source = "../modules/common"
+  environment = ""  # Foundation doesn't use environment
+}
+
+module "foundation" {
+  source = "../modules/foundation"
+  naming_patterns = module.common.naming_patterns
+  tenant_id = module.common.tenant_id
+  hq_subscription_id = module.common.hq_subscription_id
+  # ...
+}
+```
+
+**Workloads (`workloads/`):**
+```hcl
+# Minimal variables.tf - just environment override
+# No data-sources.tf - common module fetches from Key Vault
+
+# main.tf
+module "common" {
+  source = "../modules/common"
+  environment = var.environment  # Set per .tfvars
+}
+
+module "workloads" {
+  source = "../modules/workloads"
+  naming_patterns = module.common.naming_patterns
+  location = module.common.location
+  common_tags = module.common.common_tags
+}
+```
+
+**Benefits**:
+
+1. **DRY Principle**: Zero duplication of variables, naming logic, or data sources
+2. **Single Source of Truth**: Common module is authoritative for all shared configuration
+3. **Impossible to Drift**: Foundation and workloads can't have different naming schemes or variable defaults
+4. **Testability**: Common module can be tested independently with `terraform console`
+5. **Simplicity**: Root callers are extremely simple - just call common and pass outputs
+6. **Maintainability**: Update naming/variables once in common, all modules benefit
+7. **Scalability**: Easy to add new modules (networking, monitoring) that reuse common
+8. **Clear Architecture**: Dependency flow is explicit and unidirectional
+
+**Module Dependencies**:
+```
+foundation/              workloads/
+    ↓                        ↓
+    └─────→ modules/common ←─┘
+
+(No dependency between foundation and workloads)
+```
+
+**Variable Flow**:
+```
+User .tfvars → workloads/variables.tf → modules/common/variables.tf (defaults)
+                                              ↓
+                                       All modules use common outputs
+```
+
+**Rationale**: Discovered during implementation that having variable definitions in both common and child modules violated DRY. Centralizing everything in common module eliminated duplication and made the architecture much cleaner. Foundation doesn't even need variables.tf since it uses all defaults from common.
+
+---
 
 **Next Steps**:
 See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed implementation plan including:

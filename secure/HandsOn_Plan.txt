@@ -35,7 +35,12 @@ Terraform local vs aGH worklfow - secret/sensitive data injeciton and mgmt
 	10:40 start
 	11:29 stop
 	12:00 start
+	1:30  stop
+	2:30 start
+	4:45 stop	
+	6:20 start
 	
+
 	
 
 for now, let's create a repo in github and commit this with the gitignore as is 
