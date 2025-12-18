@@ -24,3 +24,9 @@ resource "azurerm_management_group_subscription_association" "service" {
   management_group_id = azurerm_management_group.service.id
   subscription_id     = "/subscriptions/${var.service_subscription_id}"
 }
+
+# Associate HQ subscription to mg-a10corp-shared management group
+resource "azurerm_management_group_subscription_association" "shared" {
+  management_group_id = azurerm_management_group.shared.id
+  subscription_id     = "/subscriptions/${var.hq_subscription_id}"
+}

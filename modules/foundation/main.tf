@@ -21,3 +21,9 @@ resource "azurerm_management_group" "service" {
   display_name               = var.naming_patterns["azurerm_management_group"]["service"]
   parent_management_group_id = azurerm_management_group.a10corp.id
 }
+
+# Shared Businessness Unit Management Group
+resource "azurerm_management_group" "shared" {
+  display_name               = var.naming_patterns["azurerm_management_group"]["shared"]
+  parent_management_group_id = azurerm_management_group.a10corp.id
+}
