@@ -241,7 +241,7 @@ az role assignment create \
 az role assignment list --assignee <objectId> --all -o table
 ```
 
-**Expected Output**:
+**Expected Output** (before Step 3.8-3.9):
 | Role | Scope |
 |------|-------|
 | Contributor | /subscriptions/fdb297a9-2ece-469c-808d-a8227259f6e8 (root) |
@@ -251,8 +251,26 @@ az role assignment list --assignee <objectId> --all -o table
 | Key Vault Secrets User | kv-root-terraform |
 | Storage Blob Data Contributor | storerootblob |
 
-**Optional - Management Group Permissions**:
-If you need to modify management groups via CI/CD:
+**Complete RBAC assignments** (after Step 3.8-3.9):
+| Role | Scope | Purpose |
+|------|-------|---------|
+| Contributor | Sub: root | Deploy resources in root subscription |
+| Contributor | Sub: hq | Deploy resources in HQ subscription |
+| Contributor | Sub: sales | Deploy resources in Sales subscription |
+| Contributor | Sub: service | Deploy resources in Service subscription |
+| User Access Administrator | Sub: hq | Associate HQ subscription to management groups |
+| User Access Administrator | Sub: sales | Associate Sales subscription to management groups |
+| User Access Administrator | Sub: service | Associate Service subscription to management groups |
+| Key Vault Secrets User | kv-root-terraform | Read subscription IDs from Key Vault |
+| Storage Blob Data Contributor | storerootblob | Read/write Terraform state files |
+| Management Group Contributor | Tenant Root MG | Create/manage management groups |
+
+**Total**: 10 role assignments
+
+### 3.8 Assign Management Group Contributor (for foundation module)
+
+**Required for**: Creating management groups and associating subscriptions.
+
 ```bash
 # Assign Management Group Contributor at tenant root
 az role assignment create \
@@ -260,6 +278,39 @@ az role assignment create \
   --role "Management Group Contributor" \
   --scope "/providers/Microsoft.Management/managementGroups/8116fad0-5032-463e-b911-cc6d1d75001d"
 ```
+
+### 3.9 Assign User Access Administrator (for subscription associations)
+
+**Required for**: Creating subscription-to-management-group associations (roleAssignments).
+
+**⚠️ IMPORTANT**: This role is needed because subscription associations modify `Microsoft.Authorization/roleAssignments`.
+
+```bash
+# Assign User Access Administrator on HQ subscription
+az role assignment create \
+  --assignee <objectId> \
+  --role "User Access Administrator" \
+  --scope "/subscriptions/da1ba383-2bf5-4ee9-8b5f-fc6effb0a100"
+
+# Assign User Access Administrator on Sales subscription
+az role assignment create \
+  --assignee <objectId> \
+  --role "User Access Administrator" \
+  --scope "/subscriptions/385c6fcb-c70b-4aed-b745-76bd608303d7"
+
+# Assign User Access Administrator on Service subscription
+az role assignment create \
+  --assignee <objectId> \
+  --role "User Access Administrator" \
+  --scope "/subscriptions/aef7255d-42b5-4f84-81f2-202191e8c7d1"
+```
+
+**Why User Access Administrator?**
+- Terraform's `azurerm_management_group_subscription_association` resource modifies role assignments
+- The `Contributor` role alone cannot modify IAM/RBAC permissions
+- `User Access Administrator` grants the minimum permissions needed for this operation
+
+**Security Note**: This role only allows managing access (IAM), not reading/modifying Azure resources.
 
 ---
 
