@@ -33,11 +33,22 @@ output "management_group_service_name" {
   value       = azurerm_management_group.service.display_name
 }
 
+output "management_group_shared_id" {
+  description = "ID of the Shared management group"
+  value       = azurerm_management_group.shared.id
+}
+
+output "management_group_shared_name" {
+  description = "Display name of the Shared management group"
+  value       = azurerm_management_group.shared.display_name
+}
+
 output "subscription_associations" {
   description = "Map of subscription associations to management groups"
   value = {
     hq      = azurerm_management_group_subscription_association.hq.id
     sales   = azurerm_management_group_subscription_association.sales.id
     service = azurerm_management_group_subscription_association.service.id
+    shared  = azurerm_management_group_subscription_association.shared.id
   }
 }
