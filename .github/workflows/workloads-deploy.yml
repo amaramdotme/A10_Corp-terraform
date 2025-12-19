@@ -110,8 +110,16 @@ jobs:
 
           if [ "$RESOURCE_COUNT" -lt 3 ]; then
             echo "state-ok=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Foundation state appears incomplete (expected at least 3 resources, found $RESOURCE_COUNT)"
-            exit 1
+            echo "⚠️ WARNING: Foundation state appears incomplete (expected at least 3 resources, found $RESOURCE_COUNT)"
+            echo "::warning::Foundation not fully deployed. This is expected during initial bootstrap."
+
+            # Only fail on main branch (when actually deploying), allow PRs to proceed
+            if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
+              echo "::error::Cannot deploy workloads without foundation. Deploy foundation first."
+              exit 1
+            else
+              echo "::notice::Allowing PR to proceed for planning purposes (non-blocking check)"
+            fi
           else
             echo "state-ok=true" >> $GITHUB_OUTPUT
             echo "✅ Foundation state looks good ($RESOURCE_COUNT resources)"
