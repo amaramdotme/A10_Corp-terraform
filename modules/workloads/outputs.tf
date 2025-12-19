@@ -34,7 +34,7 @@ output "resource_group_service_name" {
 }
 
 output "resource_groups" {
-  description = "Map of all resource group names and IDs"
+  description = "Map of all resource group names and resource IDs"
   value = {
     shared = {
       id   = azurerm_resource_group.shared_common.id
