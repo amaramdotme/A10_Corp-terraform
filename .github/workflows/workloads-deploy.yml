@@ -51,10 +51,37 @@ jobs:
             echo "environment=dev" >> $GITHUB_OUTPUT
           fi
 
+  approval-gate:
+    name: Manual Approval Required
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    environment:
+      name: workloads-${{ needs.determine-environment.outputs.environment }}-approval
+      url: https://portal.azure.com/#browse/resourcegroups
+
+    steps:
+      - name: Deployment Approval Notice
+        run: |
+          echo "🔒 Manual approval required to deploy workloads"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Environment: ${{ needs.determine-environment.outputs.environment }}"
+          echo "Trigger: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo "After approval, the workflow will:"
+          echo "  1. Check prerequisites (foundation not running, state valid)"
+          echo "  2. Run Terraform plan"
+          echo "  3. Wait for final approval in environment protection"
+          echo "  4. Execute Terraform apply"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
   check-prerequisites:
     name: Check Prerequisites
     runs-on: ubuntu-latest
-    needs: determine-environment
+    needs: [determine-environment, approval-gate]
     environment: ${{ needs.determine-environment.outputs.environment }}
     outputs:
       foundation-jobs-running: ${{ steps.check-foundation.outputs.jobs-running }}
