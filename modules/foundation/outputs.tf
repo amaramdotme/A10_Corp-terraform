@@ -35,7 +35,7 @@ output "management_group_service_name" {
 
 
 output "subscription_associations" {
-  description = "Map of subscription associations to management groups"
+  description = "Map of subscription association IDs to management groups"
   value = {
     hq      = azurerm_management_group_subscription_association.hq.id
     sales   = azurerm_management_group_subscription_association.sales.id

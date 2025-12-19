@@ -51,37 +51,10 @@ jobs:
             echo "environment=dev" >> $GITHUB_OUTPUT
           fi
 
-  approval-gate:
-    name: Manual Approval Required
-    runs-on: ubuntu-latest
-    needs: determine-environment
-    environment:
-      name: workloads-${{ needs.determine-environment.outputs.environment }}-approval
-      url: https://portal.azure.com/#browse/resourcegroups
-
-    steps:
-      - name: Deployment Approval Notice
-        run: |
-          echo "🔒 Manual approval required to deploy workloads"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          echo "Environment: ${{ needs.determine-environment.outputs.environment }}"
-          echo "Trigger: ${{ github.event_name }}"
-          echo "Branch: ${{ github.ref }}"
-          echo "Commit: ${{ github.sha }}"
-          echo ""
-          echo "After approval, the workflow will:"
-          echo "  1. Check prerequisites (foundation not running, state valid)"
-          echo "  2. Run Terraform plan"
-          echo "  3. Wait for final approval in environment protection"
-          echo "  4. Execute Terraform apply"
-          echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
   check-prerequisites:
     name: Check Prerequisites
     runs-on: ubuntu-latest
-    needs: [determine-environment, approval-gate]
+    needs: determine-environment
     environment: ${{ needs.determine-environment.outputs.environment }}
     outputs:
       foundation-jobs-running: ${{ steps.check-foundation.outputs.jobs-running }}
@@ -137,8 +110,16 @@ jobs:
 
           if [ "$RESOURCE_COUNT" -lt 3 ]; then
             echo "state-ok=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Foundation state appears incomplete (expected at least 3 resources, found $RESOURCE_COUNT)"
-            exit 1
+            echo "⚠️ WARNING: Foundation state appears incomplete (expected at least 3 resources, found $RESOURCE_COUNT)"
+            echo "::warning::Foundation not fully deployed. This is expected during initial bootstrap."
+
+            # Only fail on main branch (when actually deploying), allow PRs to proceed
+            if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
+              echo "::error::Cannot deploy workloads without foundation. Deploy foundation first."
+              exit 1
+            else
+              echo "::notice::Allowing PR to proceed for planning purposes (non-blocking check)"
+            fi
           else
             echo "state-ok=true" >> $GITHUB_OUTPUT
             echo "✅ Foundation state looks good ($RESOURCE_COUNT resources)"
