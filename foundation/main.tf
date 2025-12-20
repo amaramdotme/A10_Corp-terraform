@@ -36,3 +36,11 @@ module "foundation" {
   # Pass tags
   common_tags = module.common.common_tags
 }
+
+# Call policies module for governance (Tagging, Locations)
+module "policies" {
+  source = "../modules/policies"
+
+  management_group_id = module.foundation.management_group_hq_id
+  location            = module.common.location
+}

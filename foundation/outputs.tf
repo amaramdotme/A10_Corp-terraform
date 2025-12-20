@@ -35,3 +35,18 @@ output "acr_name" {
   description = "Name of the global ACR"
   value       = azurerm_container_registry.shared.name
 }
+
+output "log_analytics_workspace_id" {
+  description = "Resource ID of the centralized Log Analytics Workspace"
+  value       = azurerm_log_analytics_workspace.central.id
+}
+
+output "log_analytics_workspace_name" {
+  description = "Name of the centralized Log Analytics Workspace"
+  value       = azurerm_log_analytics_workspace.central.name
+}
+
+output "policy_assignments" {
+  description = "IDs of the Policy Assignments"
+  value       = module.policies.assignment_ids
+}

@@ -16,6 +16,8 @@ locals {
     "azurerm_virtual_network"        = "vnet"
     "azurerm_subnet"                 = "snet"
     "azurerm_user_assigned_identity" = "id"
+    "azurerm_log_analytics_workspace" = "log"
+    "azurerm_application_insights"    = "appi"
   }
 
   # Global workloads list
@@ -35,6 +37,8 @@ locals {
     "azurerm_virtual_network"        = true
     "azurerm_subnet"                 = true
     "azurerm_user_assigned_identity" = true
+    "azurerm_log_analytics_workspace" = false # Global monitoring
+    "azurerm_application_insights"    = true  # Apps are env-specific
   }
 
   # Optional validation helpers
