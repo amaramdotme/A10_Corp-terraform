@@ -89,6 +89,7 @@ resource "azurerm_subnet_network_security_group_association" "aks_nodes" {
 
 # NSG: Ingress
 # Result: nsg-a10corp-sales-dev-ingress
+# trivy:ignore:AVD-AZU-0047 # Intentionally allowing public ingress for Web Application Gateway
 resource "azurerm_network_security_group" "ingress" {
   provider = azurerm.sales
 
