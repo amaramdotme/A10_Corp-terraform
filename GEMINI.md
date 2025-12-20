@@ -21,6 +21,7 @@ This project manages Azure infrastructure for "A10 Corp" using **Terraform**. It
     -   `main.tf`: Calls common + workloads modules (ACR ID constructed here).
     -   `networking.tf`, `identity.tf`: Workload-specific resources.
 -   `modules/`: Reusable Terraform modules.
+-   `docs/`: Consolidated documentation.
 -   `init-plan-apply.sh`: Helper script with dynamic backend injection.
 
 ## Development Workflows
@@ -52,15 +53,6 @@ Supported environments: `dev`, `stage`, `prod`.
 ./init-plan-apply.sh --workloads --env dev apply
 ```
 
-### Manual Terraform Commands
-Initialization requires passing the root infrastructure names:
-```bash
-terraform init \
-  -backend-config="resource_group_name=${TF_VAR_root_resource_group_name}" \
-  -backend-config="storage_account_name=${TF_VAR_root_storage_account_name}" \
-  -backend-config="environments/backend.hcl"
-```
-
 ## CI/CD Pipelines
 GitHub Actions with OIDC authentication and dynamic backend injection.
 
@@ -73,9 +65,11 @@ GitHub Actions with OIDC authentication and dynamic backend injection.
 
 ## Conventions
 -   **Naming**: Strict CAF via `naming.tf`. ACRs and Storage use no-hyphen patterns.
--   **Decoupling**: Workloads **construct** the ACR ID string manually to avoid plan-time deadlocks in CI/CD when creating new environments.
--   **Secrets**: Zero secrets in Git. Parameterized root infrastructure allows for full DR and parallel stack portability.
+-   **Decoupling**: Workloads **construct** the ACR ID string manually to avoid plan-time deadlocks in CI/CD.
+-   **Secrets**: Zero secrets in Git. Parameterized root infrastructure.
+-   **Tagging**: Centralized automated `Environment` tag (`global` for foundation, `dev|stage|prod` for workloads).
 
 ## References
--   See `ARCHITECTURE.md` for deep dive.
--   See `DECISIONS.md` for architectural records.
+-   See `docs/ARCHITECTURE.md` for deep dive.
+-   See `docs/DECISIONS.md` for architectural records.
+-   See `docs/USER_MANUAL.md` for operator guides.

@@ -1073,3 +1073,32 @@ local.naming_patterns["azurerm_management_group"]["sales"] # → "mg-a10corp-sal
 **Decision**: Remove registration restrictions from provider configurations.
 
 **Summary**: Removed `resource_provider_registrations = "none"` from all provider blocks. This allows Terraform to automatically register required namespaces (like `Microsoft.Network` and `Microsoft.ManagedIdentity`) when it detects they are missing in a target subscription.
+
+---
+
+## Decision 21: Centralized Environment Tagging
+
+**Date**: 2025-12-20
+
+**Context**: Resources were lacking an explicit `Environment` tag, making it difficult to distinguish between global resources and environment-specific resources in the Azure Portal and billing reports.
+
+| Option | Description | Trade-offs |
+|--------|-------------|------------|
+| **Manual Tagging** | Add `Environment` tag to every resource manually | ❌ Extremely error-prone<br>❌ High maintenance<br>❌ Inconsistent |
+| **Module-level variables** | Pass environment tag as a variable to all modules | ❌ Duplication of logic<br>❌ Risk of missing resources |
+| **Centralized Dynamic Tags (chosen)** | Merge Environment tag into `common_tags` in the `common` module | ✅ Automated across all resources<br>✅ Single source of truth<br>✅ Consistent naming<br>✅ Differentiates global vs per-env |
+
+**Decision**: Implement centralized dynamic environment tagging in the `common` module.
+
+**Summary**: Updated the `common` module's `outputs.tf` to dynamically merge an `Environment` tag into the `common_tags` map. If `var.environment` is empty (as it is for Foundation), it defaults to `global`. If it contains a value (as it does for Workloads), it uses `dev`, `stage`, or `prod`. All downstream modules use this unified map, ensuring 100% tagging coverage.
+
+**Implementation**: [modules/common/outputs.tf](../modules/common/outputs.tf)
+```hcl
+output "common_tags" {
+  description = "Common tags to apply to resources (includes Environment; defaults to 'global' if not specified)"
+  value = merge(
+    var.common_tags,
+    { Environment = var.environment != "" ? var.environment : "global" }
+  )
+}
+```

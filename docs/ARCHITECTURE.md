@@ -58,7 +58,7 @@ Tenant Root Group
 ## Project Structure
 
 ```
-terraform_iac/
+ terraform_iac/
 ├── foundation/                 # Foundation root (GLOBAL)
 │   ├── main.tf                 # Calls common + foundation modules
 │   ├── registry.tf             # Global ACR definition
@@ -87,10 +87,14 @@ terraform_iac/
 │       ├── networking.tf       # VNet & Subnets resources
 │       └── identity.tf         # Managed Identity & RBAC
 │
+├── docs/                       # Documentation (Consolidated)
+│   ├── ARCHITECTURE.md         # This file
+│   ├── DECISIONS.md            # Architectural Decision Records
+│   ├── NEXTSTEPS.md            # Priorities + parking lot
+│   ├── OIDC_SETUP.md           # OIDC configuration guide
+│   └── USER_MANUAL.md          # Operator guide
+│
 ├── init-plan-apply.sh          # Helper script (dynamic backend injection)
-├── ARCHITECTURE.md             # This file
-├── DECISIONS.md                # Architectural Decision Records
-├── NEXTSTEPS.md                # Priorities + parking lot
 ├── .env.example                # Environment variable template
 └── .gitignore
 ```
@@ -115,7 +119,7 @@ terraform_iac/
 | Storage Account | `st{org}{workload}{env}` | `sta10corpsalesdev` |
 | Container Registry| `acr{org}{workload}` | `acra10corpsales` |
 
-**Implementation**: [modules/common/naming.tf](modules/common/naming.tf)
+**Implementation**: [modules/common/naming.tf](../modules/common/naming.tf)
 
 ---
 
@@ -129,6 +133,13 @@ The management resources (`rg-root-iac`, `kv-root-terraform`, `storerootblob`) a
 
 ### Decoupling (ID Construction)
 To prevent plan-time deadlocks in CI/CD, the Workloads module does not query Azure for the ACR ID via data sources. Instead, it **constructs** the ID string using interpolation, allowing Foundation and Workloads to be proposed in a single PR.
+
+### Environment Tagging
+All resources are automatically tagged with an `Environment` tag:
+- **Foundation Resources**: `Environment = global`
+- **Workload Resources**: `Environment = dev|stage|prod`
+
+This is managed centrally in `modules/common/outputs.tf`.
 
 ---
 
@@ -185,4 +196,6 @@ terraform init \
 
 - **Architecture Decisions**: [DECISIONS.md](DECISIONS.md)
 - **OIDC Setup Guide**: [OIDC_SETUP.md](OIDC_SETUP.md)
+- **User Manual**: [USER_MANUAL.md](USER_MANUAL.md)
 - **Azure CAF**: https://learn.microsoft.com/azure/cloud-adoption-framework/
+
