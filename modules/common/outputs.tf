@@ -39,8 +39,11 @@ output "location" {
 }
 
 output "common_tags" {
-  description = "Common tags to apply to resources"
-  value       = var.common_tags
+  description = "Common tags to apply to resources (includes Environment; defaults to 'global' if not specified)"
+  value = merge(
+    var.common_tags,
+    { Environment = var.environment != "" ? var.environment : "global" }
+  )
 }
 
 output "workloads" {

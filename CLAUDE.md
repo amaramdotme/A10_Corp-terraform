@@ -224,16 +224,17 @@ git push
 
 ## 🔄 Next Actions (Quick Reference)
 
-**Top Priority**: Create Terraform deployment workflows (foundation & workloads)
+**Top Priority**: Deploy Stage and Prod environments via GitHub Actions
 
 **Completed Recently**:
 - ✅ Workloads dev environment deployed (2025-12-17)
 - ✅ OIDC authentication configured and tested (2025-12-18)
+- ✅ Terraform deployment workflows created and tested (2025-12-20)
 
 **See**: [NEXTSTEPS.md](NEXTSTEPS.md) for complete task list with priorities
 
 ---
 
 **Maintained For**: Claude Code AI assistant
-**Last Updated**: 2025-12-18
+**Last Updated**: 2025-12-20
 **Repository**: Private (github.com:amaramdotme/A10_Corp-terraform.git)
