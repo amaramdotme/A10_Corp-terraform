@@ -1,6 +1,6 @@
 # A10 Corp Azure Infrastructure - Architecture
 
-**Last Updated**: 2025-12-18
+**Last Updated**: 2025-12-20
 **Repository**: [github.com:amaramdotme/A10_Corp-terraform.git](https://github.com/amaramdotme/A10_Corp-terraform.git) (private)
 **Terraform**: >= 1.0 | **Azure Provider**: ~> 4.0
 
@@ -8,13 +8,13 @@
 
 ## Overview
 
-Enterprise Terraform infrastructure managing Azure Management Groups, Subscriptions, and Resource Groups using a three-module architecture following Azure Cloud Adoption Framework (CAF) standards.
+Enterprise Terraform infrastructure managing Azure Management Groups, Subscriptions, Resource Groups, Networking, and Container Registries using a three-module architecture following Azure Cloud Adoption Framework (CAF) standards.
 
 ### Three-Module Design
 
-1. **Common** - Shared naming, variables, Key Vault integration (library)
-2. **Foundation** - Management Groups + subscription associations (global, deploy once)
-3. **Workloads** - Resource Groups per environment (deploy/destroy as needed)
+1. **Common** - Shared naming, variables, Key Vault, and Storage integration (library)
+2. **Foundation** - Management Groups + subscription associations + Global ACR (global, deploy once)
+3. **Workloads** - Resource Groups + VNets + Subnets + Identity per environment (deploy/destroy as needed)
 
 ---
 
@@ -26,15 +26,20 @@ Enterprise Terraform infrastructure managing Azure Management Groups, Subscripti
 Tenant Root Group
 ├── sub-root (Infrastructure subscription)
 │   └── rg-root-iac
-│       ├── kv-root-terraform (9 secrets)
-│       └── storerootblob (4 state containers)
+│       ├── kv-root-terraform (Secrets & Config)
+│       ├── storerootblob (Terraform State)
+│       └── acra10corpsales ✅ FOUNDATION (Global ACR)
 │
 └── mg-a10corp-hq ✅ FOUNDATION
-    ├── sub-hq → rg-a10corp-shared-dev ✅ (stage/prod ⏳)
+    ├── sub-hq → rg-a10corp-shared-dev ✅
     ├── mg-a10corp-sales ✅
-    │   └── sub-sales → rg-a10corp-sales-dev ✅ (stage/prod ⏳)
+    │   └── sub-sales → rg-a10corp-sales-dev ✅
+    │       ├── vnet-a10corp-sales-dev ✅
+    │       │   ├── snet-a10corp-sales-dev-aks-nodes ✅
+    │       │   └── snet-a10corp-sales-dev-ingress ✅
+    │       └── id-a10corp-sales-dev ✅ (Managed Identity)
     └── mg-a10corp-service ✅
-        └── sub-service → rg-a10corp-service-dev ✅ (stage/prod ⏳)
+        └── sub-service → rg-a10corp-service-dev ✅
 ```
 
 ### Deployment Status
@@ -42,26 +47,11 @@ Tenant Root Group
 | Component | Status | Resources | State File |
 |-----------|--------|-----------|------------|
 | **Pre-Terraform** (manual) | ✅ Complete | rg-root-iac, kv-root-terraform, storerootblob | N/A |
-| **Foundation** | ✅ Deployed | 3 MGs + 3 associations | storerootblob/foundation |
-| **Workloads (Dev)** | ✅ Deployed 2025-12-17 | 3 resource groups | storerootblob/workloads-dev |
+| **Foundation** | ✅ Deployed | 3 MGs + 3 associations + ACR | storerootblob/foundation |
+| **Workloads (Dev)** | ✅ Deployed 2025-12-20 | 3 RGs + VNet + Subnets + Identity | storerootblob/workloads-dev |
 | **Workloads (Stage)** | ⏳ Pending | 0/3 resource groups | storerootblob/workloads-stage |
 | **Workloads (Prod)** | ⏳ Pending | 0/3 resource groups | storerootblob/workloads-prod |
-| **CI/CD (OIDC)** | ✅ Configured 2025-12-18 | 4 federated credentials + 6 RBAC roles | [OIDC_SETUP.md](OIDC_SETUP.md) |
-
-### Management Group IDs
-
-- `mg-a10corp-hq`: a56fd357-2ecc-46bf-b831-1b86e5fd43bb
-- `mg-a10corp-sales`: 3ad4b4c9-368c-44c9-8f02-df14e0da8447
-- `mg-a10corp-service`: 4b511fa7-48ad-495e-b7d7-bf6cfdc8a22e
-
-### Subscriptions (4 total)
-
-| Name | Purpose | Management Group | Status |
-|------|---------|------------------|--------|
-| sub-root | Infrastructure (Key Vault, Storage) | Tenant Root (never moved) | ✅ Active |
-| sub-hq | HQ workloads | mg-a10corp-hq | ✅ Associated |
-| sub-sales | Sales workloads | mg-a10corp-sales | ✅ Associated |
-| sub-service | Service workloads | mg-a10corp-service | ✅ Associated |
+| **CI/CD (OIDC)** | ✅ Configured | 4 federated credentials + 6 RBAC roles | [OIDC_SETUP.md](OIDC_SETUP.md) |
 
 ---
 
@@ -71,13 +61,14 @@ Tenant Root Group
 terraform_iac/
 ├── foundation/                 # Foundation root (GLOBAL)
 │   ├── main.tf                 # Calls common + foundation modules
-│   ├── backend.tf              # Remote state: storerootblob/foundation-dev
+│   ├── registry.tf             # Global ACR definition
+│   ├── backend.tf              # Remote state: storerootblob/foundation
 │   └── environments/backend.hcl
 │
 ├── workloads/                  # Workloads root (PER-ENVIRONMENT)
-│   ├── main.tf                 # Calls common + workloads modules
+│   ├── main.tf                 # Calls common + workloads modules (ACR ID constructed here)
 │   ├── backend.tf              # Remote state: storerootblob/workloads-{env}
-│   ├── variables.tf            # Environment override
+│   ├── variables.tf            # Environment overrides
 │   └── environments/
 │       ├── dev.tfvars, stage.tfvars, prod.tfvars
 │       └── backend-dev.hcl, backend-stage.hcl, backend-prod.hcl
@@ -85,19 +76,21 @@ terraform_iac/
 ├── modules/
 │   ├── common/                 # Naming, variables, Key Vault (shared library)
 │   │   ├── naming.tf           # Three-branch CAF naming logic
-│   │   ├── variables.tf        # All variable definitions with defaults
-│   │   ├── data-sources.tf     # Key Vault data sources
-│   │   └── outputs.tf          # Exports naming_patterns, subscription IDs
+│   │   ├── variables.tf        # All variable definitions (parameterized root)
+│   │   ├── data-sources.tf     # Key Vault & Storage data sources
+│   │   └── outputs.tf          # Exports naming_patterns, subscription IDs, root constants
 │   ├── foundation/             # Management groups module
 │   │   ├── main.tf             # Management group resources
 │   │   └── subscriptions.tf    # Subscription associations
 │   └── workloads/              # Resource groups module
-│       └── main.tf             # Resource group resources
+│       ├── main.tf             # Resource group resources
+│       ├── networking.tf       # VNet & Subnets resources
+│       └── identity.tf         # Managed Identity & RBAC
 │
-├── ARCHITECTURE.md             # This file (infrastructure + commands)
+├── init-plan-apply.sh          # Helper script (dynamic backend injection)
+├── ARCHITECTURE.md             # This file
 ├── DECISIONS.md                # Architectural Decision Records
 ├── NEXTSTEPS.md                # Priorities + parking lot
-├── CLAUDE.md                   # AI assistant context
 ├── .env.example                # Environment variable template
 └── .gitignore
 ```
@@ -112,56 +105,30 @@ terraform_iac/
 |----------|---------|---------|
 | Management Group | `mg-{org}-{workload}` | `mg-a10corp-sales` |
 | Resource Group | `rg-{org}-{workload}-{env}` | `rg-a10corp-sales-dev` |
-| Virtual Machine | `vm-{org}-{workload}-{env}` | `vm-a10corp-sales-dev` |
+| Virtual Network | `vnet-{org}-{workload}-{env}` | `vnet-a10corp-sales-dev` |
+| Managed Identity | `id-{org}-{workload}-{env}` | `id-a10corp-sales-dev` |
 
 ### No-Hyphen Resources (alphanumeric only)
 
 | Resource | Pattern | Example |
 |----------|---------|---------|
 | Storage Account | `st{org}{workload}{env}` | `sta10corpsalesdev` |
+| Container Registry| `acr{org}{workload}` | `acra10corpsales` |
 
-**Implementation**: [modules/common/naming.tf](modules/common/naming.tf) - Three-branch naming system handles hyphens, no-hyphens, and environment suffixes
-
-**Details**: See [DECISIONS.md - Decision 16](DECISIONS.md#decision-16-three-branch-naming-system-for-azure-resource-restrictions)
+**Implementation**: [modules/common/naming.tf](modules/common/naming.tf)
 
 ---
 
 ## Security & Secrets
 
-### Key Vault Integration
+### Parameterized Root Infrastructure
+The management resources (`rg-root-iac`, `kv-root-terraform`, `storerootblob`) are no longer hardcoded. They are passed as required variables:
+- `TF_VAR_root_resource_group_name`
+- `TF_VAR_root_key_vault_name`
+- `TF_VAR_root_storage_account_name`
 
-**Native Terraform approach** - No external scripts:
-
-```hcl
-data "azurerm_key_vault_secret" "hq_subscription_id" {
-  name         = "terraform-${var.environment}-hq-sub-id"
-  key_vault_id = data.azurerm_key_vault.terraform.id
-}
-```
-
-### Secret Structure
-
-```
-kv-root-terraform/
-# 9 secrets (3 subscription IDs × 3 environments)
-├── terraform-dev-hq-sub-id
-├── terraform-dev-sales-sub-id
-├── terraform-dev-service-sub-id
-├── terraform-stage-* (same pattern)
-└── terraform-prod-* (same pattern)
-```
-
-**Note**: Tenant ID and root subscription ID from authenticated context (`.env` file or GitHub OIDC), not Key Vault.
-
-### Authentication
-
-**Local Development**: Azure CLI + .env file
-```bash
-export ARM_SUBSCRIPTION_ID="<sub-root-id>"  # Where Key Vault lives
-export ARM_TENANT_ID="<tenant-id>"
-```
-
-**CI/CD**: OIDC Workload Identity Federation (zero long-lived secrets) - See [DECISIONS.md - Decision 9](DECISIONS.md#decision-9-cicd-authentication-method)
+### Decoupling (ID Construction)
+To prevent plan-time deadlocks in CI/CD, the Workloads module does not query Azure for the ACR ID via data sources. Instead, it **constructs** the ID string using interpolation, allowing Foundation and Workloads to be proposed in a single PR.
 
 ---
 
@@ -169,224 +136,53 @@ export ARM_TENANT_ID="<tenant-id>"
 
 ### Prerequisites
 
-- Terraform >= 1.0 at `~/bin/terraform`
+- Terraform >= 1.0
 - Azure CLI authenticated (`az login`)
-- Permissions: Management Group Contributor, Key Vault Secrets Officer, Contributor on subscriptions
+- Updated `.env` file with `TF_VAR_root_*` variables
 
-### 5-Minute Deploy
+### Deployment via Helper Script
+
+The helper script handles dynamic backend configuration injection automatically.
 
 ```bash
-# 1. Clone and setup
-git clone git@github.com:amaramdotme/A10_Corp-terraform.git
-cd A10_Corp-terraform
-cp .env.example .env
-nano .env  # Update ARM_SUBSCRIPTION_ID and ARM_TENANT_ID
+# 1. Deploy Foundation (Global)
+./init-plan-apply.sh --foundation init
+./init-plan-apply.sh --foundation plan
+./init-plan-apply.sh --foundation apply
 
-# 2. Deploy Foundation (Management Groups)
-cd foundation/
-source ../.env
-terraform init
-terraform plan -out=foundation.tfplan
-terraform apply foundation.tfplan
-
-# 3. Deploy Workloads (Resource Groups - Dev)
-cd ../workloads/
-source ../.env
-terraform init -backend-config="environments/backend-dev.hcl"
-terraform plan -var-file="environments/dev.tfvars" -out=dev.tfplan
-terraform apply dev.tfplan
+# 2. Deploy Workloads (e.g. Dev)
+./init-plan-apply.sh --workloads --env dev init
+./init-plan-apply.sh --workloads --env dev plan
+./init-plan-apply.sh --workloads --env dev apply
 ```
 
 ---
 
 ## Terraform Commands
 
-### The Three Switches
-
-**Foundation (2/3)**:
-1. `source .env` ✓ Always required
-2. Backend config ✓ `environments/backend.hcl`
-3. Var-file ✗ NOT used (global)
-
-**Workloads (3/3)**:
-1. `source .env` ✓ Always required
-2. Backend config ✓ `environments/backend-{env}.hcl`
-3. Var-file ✓ `environments/{env}.tfvars`
-
-================================================================================
-TERRAFORM COMMANDS - THREE-MODULE ARCHITECTURE
-================================================================================
-
-###### FOUNDATION STARTS ######
---- Init ---
-cd foundation/
-source ../.env && terraform init -backend-config="environments/backend.hcl"
-
-#remove backend.tf to store locally
-source ../.env && terraform init 
-
---- Plan & Apply ---
-terraform fmt -recursive && terraform validate
-
-terraform plan -out=foundation.tfplan
-terraform apply foundation.tfplan
-
---- State ---
-terraform state list
-terraform state show module.foundation.azurerm_management_group.hq
-terraform state pull > backup-foundation-$(date +%Y%m%d).json
-
---- Import ---
-terraform import \
-  module.foundation.azurerm_management_group.hq \
-  /providers/Microsoft.Management/managementGroups/mg-a10corp-hq
-
---- Outputs ---
-terraform output
-terraform output -json > foundation-outputs.json
-
-
---- Destroy ---
-source ../.env && terraform destroy 
-
-###### FOUNDATION ENDS ######
-
-###### WORKLOADS STARTS ######
-
---- Init ---
-cd workloads
-source ../.env && terraform init -backend-config="environments/backend-dev.hcl"
-
---- Plan & Apply ---
-terraform fmt -recursive && terraform validate
-
-terraform plan -var-file="environments/dev.tfvars" -out=workloads.tfplan
-
-terraform apply "workloads.tfplan"
-
---- State ---
-terraform state list
-terraform state show module.workloads.azurerm_resource_group.shared_common
-terraform state show module.workloads.azurerm_resource_group.sales
-terraform state show module.workloads.azurerm_resource_group.service
-terraform state pull > backup-workloads-$(date +%Y%m%d).json
-
---- Import ---
-# Import shared/common resource group (HQ subscription)
-terraform import \
-  module.workloads.azurerm_resource_group.shared_common \
-  /subscriptions/<HQ_SUB_ID>/resourceGroups/rg-a10corp-shared-dev
-
-# Import sales resource group (Sales subscription)
-terraform import \
-  module.workloads.azurerm_resource_group.sales \
-  /subscriptions/<SALES_SUB_ID>/resourceGroups/rg-a10corp-sales-dev
-
-# Import service resource group (Service subscription)
-terraform import \
-  module.workloads.azurerm_resource_group.service \
-  /subscriptions/<SERVICE_SUB_ID>/resourceGroups/rg-a10corp-service-dev
-
---- Outputs ---
-terraform output
-terraform output -json > workloads-outputs.json
-terraform output resource_groups
-
---- Destroy ---
-source ../.env && terraform destroy -var-file="environments/dev.tfvars"
-
-###### WORKLOADS ENDS ######
-
-### Common Commands
-
+### Dynamic Backend Initialization
+Backend configurations are injected during `init`:
 ```bash
-# Format & validate
-terraform fmt -recursive
-terraform validate
-
-# State management
-terraform state list
-terraform state show <resource>
-terraform state pull > backup-$(date +%Y%m%d).json
-
-# Import existing resource
-terraform import module.workloads.azurerm_resource_group.sales \
-  /subscriptions/<SUB_ID>/resourceGroups/rg-a10corp-sales-dev
-
-# Force unlock stuck state
-terraform force-unlock <LOCK_ID>
+terraform init \
+  -backend-config="resource_group_name=${TF_VAR_root_resource_group_name}" \
+  -backend-config="storage_account_name=${TF_VAR_root_storage_account_name}" \
+  -backend-config="environments/backend.hcl"
 ```
 
 ---
 
 ## Troubleshooting
 
-### `Error: subscription ID could not be determined`
-**Fix**: Source .env file before running terraform
-```bash
-source .env
-terraform plan
-```
+### `Error: MissingSubscriptionRegistration`
+**Fix**: Provider registration is now automatic. Ensure the service principal has `Contributor` or `Classic Administrator` permissions at the subscription level to allow namespace registration.
 
-### `Error: authorization failed for Key Vault`
-**Fix**: Grant Key Vault Secrets Officer role
-```bash
-az role assignment create \
-  --role "Key Vault Secrets Officer" \
-  --assignee $(az ad signed-in-user show --query mail -o tsv) \
-  --scope /subscriptions/<SUB_ID>/resourceGroups/rg-root-iac/providers/Microsoft.KeyVault/vaults/kv-root-terraform
-```
-
-### Wrong environment deployed
-**Fix**: Always use matching backend config + var-file
-```bash
-# Dev
-terraform init -reconfigure -backend-config="environments/backend-dev.hcl"
-terraform plan -var-file="environments/dev.tfvars"
-```
-
-### State lock timeout
-**Fix**: Verify no other terraform process running, then force unlock
-```bash
-terraform force-unlock <LOCK_ID>
-```
-
----
-
-## Key Features
-
-### ✅ Implemented
-
-- Three-Module Architecture (Common + Foundation + Workloads)
-- Three-Branch Naming System (hyphens, no-hyphens, environment suffixes)
-- Native Key Vault Integration (no external scripts)
-- Multi-Environment Support (dev, stage, prod)
-- Remote State Backend (Azure Storage with locking)
-- Zero Secrets in Git (Key Vault + environment variables)
-
-### 📊 Infrastructure Stats
-
-- **Modules**: 3 (Common, Foundation, Workloads)
-- **Management Groups**: 3 deployed ✅
-- **Subscription Associations**: 3 deployed ✅
-- **Resource Groups**: 3/9 deployed (dev ✅, stage/prod ⏳)
-- **Key Vault Secrets**: 9 (3 subscription IDs × 3 environments)
-- **State Files**: 4 (1 foundation + 3 workloads)
-- **CI/CD Authentication**: OIDC ✅ (4 environments: global, dev, stage, prod)
+### `Error: State Lock`
+**Fix**: Use `terraform force-unlock <ID>` if a previous run was interrupted.
 
 ---
 
 ## Reference Links
 
 - **Architecture Decisions**: [DECISIONS.md](DECISIONS.md)
-- **Next Steps**: [NEXTSTEPS.md](NEXTSTEPS.md)
-- **AI Context**: [CLAUDE.md](CLAUDE.md)
 - **OIDC Setup Guide**: [OIDC_SETUP.md](OIDC_SETUP.md)
 - **Azure CAF**: https://learn.microsoft.com/azure/cloud-adoption-framework/
-- **Terraform azurerm**: https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
-- **Azure Management Groups**: https://learn.microsoft.com/azure/governance/management-groups/
-
----
-
-**Last Updated**: 2025-12-18
-**License**: Private - All Rights Reserved

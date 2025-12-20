@@ -1005,5 +1005,71 @@ local.naming_patterns["azurerm_management_group"]["sales"] # → "mg-a10corp-sal
 
 ---
 
-**Next Steps**:
-See [docs/sessions/2025-12-17-three-module-migration.md](sessions/2025-12-17-three-module-migration.md) for three-module migration details.
+## Decision 17: Parameterization of Root Infrastructure
+
+**Date**: 2025-12-20
+
+**Context**: The name of the root resource group (`rg-root-iac`), Key Vault (`kv-root-terraform`), and Storage Account (`storerootblob`) were hardcoded in multiple files. This prevented portability for Disaster Recovery (DR) or parallel stack deployments.
+
+| Option | Description | Trade-offs |
+|--------|-------------|------------|
+| **Hardcoded Constants** | Keep strings in the code | ❌ Prevents DR/Parallel stacks<br>❌ "Magic strings" scattered everywhere<br>✅ Zero configuration overhead |
+| **Centralized Constants** | Define once in `common` module | ✅ DRY (Don't Repeat Yourself)<br>❌ Still prevents DR/Parallel stacks without code changes |
+| **Environment Variables (chosen)** | Use required `TF_VAR_root_*` variables | ✅ Full portability (DR-ready)<br>✅ No hardcoded strings in Iac<br>✅ Explicit configuration<br>❌ Adds setup steps for devs/CI |
+
+**Decision**: Parameterize all root infrastructure identifiers as required variables.
+
+**Summary**: Moved root resource group, Key Vault, and Storage Account names to required Terraform variables. These are injected via `.env` files locally and GitHub Repository Variables in CI/CD. This ensures the codebase can be pointed at any management infrastructure without modifying the source code.
+
+---
+
+## Decision 18: Decoupling Modules via ID Construction
+
+**Date**: 2025-12-20
+
+**Context**: Using `data "azurerm_container_registry"` in the Workloads module caused `terraform plan` to fail if the ACR had not been created yet by the Foundation module, creating a deadlock in CI/CD.
+
+| Option | Description | Trade-offs |
+|--------|-------------|------------|
+| **Runtime Lookup (data source)** | Query Azure API for the resource ID | ❌ Deadlocks CI/CD on new environments<br>❌ Brittle dependency on existence<br>✅ Ensures resource exists |
+| **Remote State Lookup** | Read ID from Foundation state file | ❌ Requires state access/permissions<br>❌ Brittle cross-module dependency<br>✅ Dynamic and verified |
+| **Configuration ID Construction (chosen)** | Manually build the ID string using interpolation | ✅ Prevents CI/CD deadlocks<br>✅ Predictable and deterministic<br>✅ Zero API dependencies during plan<br>⚠️ Might point to missing resource (Apply will catch this) |
+
+**Decision**: Use ID construction for cross-module resource referencing.
+
+**Summary**: Replaced runtime data lookups with deterministic ID construction (e.g., `/subscriptions/${sub}/.../registries/${name}`). Since naming conventions are strictly enforced via `naming.tf`, we can guarantee the ID string before the resource is even created. This allows atomic PRs where both Foundation and Workloads are proposed together.
+
+---
+
+## Decision 19: Dynamic Backend Configuration Injection
+
+**Date**: 2025-12-20
+
+**Context**: Backend `.hcl` files cannot use variables, leading to hardcoded storage account and resource group names for state management.
+
+| Option | Description | Trade-offs |
+|--------|-------------|------------|
+| **Hardcoded .hcl files** | Keep names in backend config files | ❌ Prevents DR (state locked to specific SA/RG)<br>✅ Simple init command |
+| **CLI-based Injection (chosen)** | Use `-backend-config` flags during `init` | ✅ Full DR capability<br>✅ Dynamic state locations<br>✅ No hardcoded strings in config<br>❌ Requires helper script/CI logic |
+
+**Decision**: Inject backend configuration dynamically via CLI.
+
+**Summary**: Removed hardcoded storage account and resource group names from all `backend.hcl` files. The `init-plan-apply.sh` script and GitHub Workflows now inject these values at runtime using `-backend-config` flags, pulling from environment variables.
+
+---
+
+## Decision 20: Enabling Automatic Resource Provider Registration
+
+**Date**: 2025-12-20
+
+**Context**: Subscription-level operations were failing with `MissingSubscriptionRegistration` errors because auto-registration was disabled.
+
+| Option | Description | Trade-offs |
+|--------|-------------|------------|
+| **Manual Registration** | Register namespaces via CLI/Portal | ❌ High manual overhead per subscription<br>❌ Error-prone |
+| **Disable Registration** | Keep `resource_provider_registrations = "none"` | ❌ Constant failures on new subscriptions<br>✅ Faster for pre-registered tenants |
+| **Automatic Registration (chosen)** | Let Terraform handle registration | ✅ "Just works" on new subscriptions<br>✅ Fully automated lifecycle<br>⚠️ Requires appropriate RBAC |
+
+**Decision**: Remove registration restrictions from provider configurations.
+
+**Summary**: Removed `resource_provider_registrations = "none"` from all provider blocks. This allows Terraform to automatically register required namespaces (like `Microsoft.Network` and `Microsoft.ManagedIdentity`) when it detects they are missing in a target subscription.

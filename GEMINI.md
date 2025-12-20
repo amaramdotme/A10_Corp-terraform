@@ -4,37 +4,38 @@
 This project manages Azure infrastructure for "A10 Corp" using **Terraform**. It follows a **three-module architecture** based on the Azure Cloud Adoption Framework (CAF).
 
 ### Core Architecture
-1.  **Common** (`modules/common`): Shared library for naming, variables, and Key Vault integration.
-2.  **Foundation** (`foundation/`): Global resources (Management Groups, Subscription associations). Deployed once.
-3.  **Workloads** (`workloads/`): Per-environment resources (Resource Groups). Deployed per environment (dev, stage, prod).
+1.  **Common** (`modules/common`): Shared library for naming, variables, Key Vault, and Storage integration.
+2.  **Foundation** (`foundation/`): Global resources (Management Groups, Subscription associations, Global ACR).
+3.  **Workloads** (`workloads/`): Per-environment resources (Resource Groups, VNets, Subnets, Managed Identities).
 
 ## Key Technologies
 -   **Terraform**: >= 1.0
--   **Azure Provider**: ~> 4.0
+-   **Azure Provider**: ~> 4.0 (Automatic registration enabled)
 -   **Scripting**: Bash (`init-plan-apply.sh`)
 
 ## Project Structure
 -   `foundation/`: Root module for global infrastructure.
-    -   `main.tf`: Defines management groups and subscriptions.
-    -   `environments/backend.hcl`: Backend configuration.
+    -   `main.tf`: Calls common + foundation modules.
+    -   `registry.tf`: Global ACR definition.
 -   `workloads/`: Root module for environment-specific infrastructure.
-    -   `main.tf`: Defines resource groups.
-    -   `environments/`: Contains env-specific backends (`backend-dev.hcl`) and variables (`dev.tfvars`).
+    -   `main.tf`: Calls common + workloads modules (ACR ID constructed here).
+    -   `networking.tf`, `identity.tf`: Workload-specific resources.
 -   `modules/`: Reusable Terraform modules.
-    -   `common/`: Shared logic (naming, vars).
-    -   `foundation/`: Management Group logic.
-    -   `workloads/`: Resource Group logic.
--   `init-plan-apply.sh`: Helper script to simplify Terraform workflows.
+-   `init-plan-apply.sh`: Helper script with dynamic backend injection.
 
 ## Development Workflows
 
 ### Prerequisites
 -   Azure CLI (`az login`)
 -   Terraform installed
--   `.env` file configured (copy from `.env.example`) with `ARM_SUBSCRIPTION_ID` and `ARM_TENANT_ID`.
+-   `.env` file configured (copy from `.env.example`) with:
+    -   `ARM_SUBSCRIPTION_ID`, `ARM_TENANT_ID`
+    -   `TF_VAR_root_resource_group_name`
+    -   `TF_VAR_root_key_vault_name`
+    -   `TF_VAR_root_storage_account_name`
 
 ### Using the Helper Script (Recommended)
-The `init-plan-apply.sh` script abstracts the directory switching and argument passing.
+The `init-plan-apply.sh` script handles dynamic backend injection (injecting RG and Storage names during `init`).
 
 **Foundation (Global)**
 ```bash
@@ -52,48 +53,28 @@ Supported environments: `dev`, `stage`, `prod`.
 ```
 
 ### Manual Terraform Commands
-**Foundation**
+Initialization requires passing the root infrastructure names:
 ```bash
-cd foundation
-source ../.env
-terraform init -backend-config="environments/backend.hcl"
-terraform plan -out=foundation.tfplan
-terraform apply foundation.tfplan
-```
-
-**Workloads (e.g., Dev)**
-```bash
-cd workloads
-source ../.env
-terraform init -backend-config="environments/backend-dev.hcl"
-terraform plan -var-file="environments/dev.tfvars" -out=dev.tfplan
-terraform apply dev.tfplan
+terraform init \
+  -backend-config="resource_group_name=${TF_VAR_root_resource_group_name}" \
+  -backend-config="storage_account_name=${TF_VAR_root_storage_account_name}" \
+  -backend-config="environments/backend.hcl"
 ```
 
 ## CI/CD Pipelines
-The project uses GitHub Actions with **OIDC authentication** (no long-lived secrets).
+GitHub Actions with OIDC authentication and dynamic backend injection.
 
 ### Workflows
 1.  **Foundation Deploy** (`foundation-deploy.yml`):
-    *   **Trigger**: Push/PR to `main` affecting `foundation/`.
-    *   **Actions**: Plans changes, comments summary on PR, applies on merge.
-    *   **Audit**: Uploads full plan to Azure Blob Storage (`storerootblob/foundation`).
+    *   **Audit**: Full plans stored in `plans/` prefix of root storage account.
 2.  **Workloads Deploy** (`workloads-deploy.yml`):
-    *   **Trigger**: Push/PR to `main` or manual dispatch.
-    *   **Actions**: Targets specific env (`dev`/`stage`/`prod`).
-    *   **Safety**: Checks if Foundation is healthy before running.
-3.  **Manual Ops** (`terraform-deploy.yml`):
-    *   **Trigger**: Manual dispatch only.
-    *   **Actions**: Ad-hoc Plan/Apply/Destroy for any environment.
-4.  **OIDC Test** (`test-oidc.yml`):
-    *   **Trigger**: Manual.
-    *   **Actions**: Verifies Azure connectivity and RBAC permissions.
+    *   **Safety**: Verifies Foundation health before running.
+3.  **Manual Ops** (`terraform-deploy.yml`): Ad-hoc operations.
 
 ## Conventions
--   **Naming**: Follows strict CAF standards via `modules/common/naming.tf` (e.g., `rg-a10corp-sales-dev`).
--   **State**: Stored in Azure Blob Storage (`storerootblob`).
--   **Secrets**: **NO secrets in Git**. Uses Azure Key Vault (`kv-root-terraform`) to fetch sensitive IDs at runtime.
--   **CI/CD**: GitHub Actions using OIDC (Workload Identity Federation).
+-   **Naming**: Strict CAF via `naming.tf`. ACRs and Storage use no-hyphen patterns.
+-   **Decoupling**: Workloads **construct** the ACR ID string manually to avoid plan-time deadlocks in CI/CD when creating new environments.
+-   **Secrets**: Zero secrets in Git. Parameterized root infrastructure allows for full DR and parallel stack portability.
 
 ## References
 -   See `ARCHITECTURE.md` for deep dive.
