@@ -27,7 +27,8 @@ jobs:
   terraform-plan:
     name: Terraform Plan (Foundation)
     runs-on: ubuntu-latest
-
+    # environment:
+    #  name: global # adding this will gate it - manual approval
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
