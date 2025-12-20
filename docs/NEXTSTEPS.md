@@ -8,13 +8,13 @@
 
 ### 1. ✅ Verify Centralized Tagging - COMPLETE
 **Status**: ✅ Verified 2025-12-20
-**Success**: Resources across root, dev, and stage subscriptions confirmed to have correct `Environment` tags (global, dev, stage, prod).
+**Success**: Resources across root, dev, and stage subscriptions confirmed to have correct `Environment` tags.
 
 ---
 
 ### 2. ✅ Test GitHub Actions Workflows - COMPLETE
 **Status**: ✅ Tested 2025-12-20
-**Success**: Deployment workflows for foundation and workloads are operational.
+**Success**: Deployment workflows for foundation and workloads are operational with OIDC.
 
 ---
 
@@ -24,41 +24,36 @@
 
 ---
 
-## 🔄 Short-Term (This Week)
-
-### 4. Add Azure Policy Assignments
-**Status**: Future enhancement
-**Effort**: Medium
-**Scope**: New module `modules/policies/` for tagging enforcement, location restrictions, and resource SKU limits.
+### 4. ✅ Initial Governance & Monitoring (Phase 1) - COMPLETE
+**Status**: ✅ Deployed 2025-12-20
+**Deliverables**:
+- Created `modules/policies` (Native Terraform).
+- Enforced: Tagging (`Environment`), Location (`eastus`), Cost (`Allowed VM SKUs`), Security (`Secure Transfer`).
+- Deployed: Centralized Log Analytics Workspace in Foundation (`log-a10corp-hq`).
 
 ---
 
-### 5. Add Monitoring & Alerting
-**Status**: Next Milestone
-**Effort**: Large
-**Scope**: Deploy Log Analytics Workspaces per environment, set up Application Insights, and configure Azure Monitor alerts.
+## 🔄 Short-Term (This Week)
+
+### 5. Advanced Policy Enforcement (Phase 2)
+**Status**: Next Priority
+**Scope**:
+- **Naming Convention**: Enforce `*-a10corp-*` pattern check on Resource Groups to prevent "rogue" unbranded resources.
+- **Observability Audit**: Add "Audit if Diagnostic Settings are missing" policy to ensure resources connect to the Central Log Analytics Workspace.
+
+---
+
+### 6. Workload Observability Integration
+**Status**: Pending
+**Scope**: Update `modules/workloads` to:
+- Retrieve the Central LAW ID from Foundation outputs.
+- Configure Diagnostic Settings for Workload resources (VNets, NSGs, AKS) to ship logs to that ID.
 
 ---
 
 ## 📋 Medium-Term (This Month)
 
-### 6. ✅ GitHub Actions OIDC Setup - COMPLETE
-**Status**: ✅ Configured and tested 2025-12-18
-**Reference**: [OIDC_SETUP.md](OIDC_SETUP.md) | [DECISIONS.md - Decision 9](DECISIONS.md#decision-9-cicd-authentication-method)
-
----
-
-### 7. ✅ Create Terraform Deployment Workflows - COMPLETE
-**Status**: ✅ Created 2025-12-18
-**Deliverables**:
-- `.github/workflows/foundation-deploy.yml`
-- `.github/workflows/workloads-deploy.yml`
-- `.github/workflows/workloads-destroy.yml`
-- `.github/workflows/foundation-destroy.yml`
-
----
-
-### 8. Security Review & Least Privilege Audit
+### 7. Security Review & Least Privilege Audit
 **Status**: Pending
 **Scope**: Review `Network Contributor` and `AcrPull` role assignments to ensure they are scoped to minimum required levels.
 
@@ -66,15 +61,15 @@
 
 ## 🅿️ Parking Lot (Future Consideration)
 
-### 9. Networking Module (Advanced)
-### 10. State File Migration to Terraform Cloud
-### 11. Infrastructure Testing (Terratest)
+### 8. Networking Module (Advanced)
+### 9. State File Migration to Terraform Cloud
+### 10. Infrastructure Testing (Terratest)
 
 ---
 
 ## ⚠️ Known Issues & Blockers
 
-**None currently** - Core multi-environment infrastructure is fully operational.
+**None currently** - Core infrastructure, Governance, and CI/CD are fully operational.
 
 ---
 
@@ -87,13 +82,10 @@
 | Management Groups | 3 | 3 | ✅ 100% |
 | Subscription Associations | 3 | 3 | ✅ 100% |
 | Resource Groups (dev) | 3 | 3 | ✅ 100% |
-| Resource Groups (stage) | 3 | 3 | ✅ 100% |
-| Resource Groups (prod) | 3 | 3 | ✅ 100% |
-| OIDC Authentication | 1 | 1 | ✅ 100% |
-| CI/CD Workflows | 4 | 4 | ✅ 100% |
-| Centralized Tagging | 100% | 100% | ✅ 100% |
+| CI/CD Pipelines | 4 | 4 | ✅ 100% |
+| Governance Policies | 4 | 4 | ✅ 100% |
+| Centralized Logging | 1 | 1 | ✅ 100% |
 
-### Next Milestone: Governance & Monitoring
-- Azure Policy enforcement active
-- Centralized logging operational
-- Security audit complete
+### Next Milestone: Deep Observability
+- All workloads automatically shipping logs to Foundation
+- Policy auditing for "blind" resources

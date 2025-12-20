@@ -18,6 +18,8 @@ locals {
     "azurerm_user_assigned_identity" = "id"
     "azurerm_log_analytics_workspace" = "log"
     "azurerm_application_insights"    = "appi"
+    "azurerm_network_security_group"  = "nsg"
+    "azurerm_route_table"             = "route"
   }
 
   # Global workloads list
@@ -39,6 +41,8 @@ locals {
     "azurerm_user_assigned_identity" = true
     "azurerm_log_analytics_workspace" = false # Global monitoring
     "azurerm_application_insights"    = true  # Apps are env-specific
+    "azurerm_network_security_group"  = true
+    "azurerm_route_table"             = true
   }
 
   # Optional validation helpers

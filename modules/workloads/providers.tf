@@ -12,6 +12,7 @@ terraform {
         azurerm.hq,
         azurerm.sales,
         azurerm.service,
+        azurerm.root,
       ]
     }
   }

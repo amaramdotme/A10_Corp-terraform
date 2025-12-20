@@ -49,6 +49,17 @@ jobs:
         working-directory: ./foundation
         continue-on-error: true
 
+      - name: Security Scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          hide-progress: false
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+        env:
+          TRIVY_TARGET: ./foundation
+
       - name: Terraform Init
         run: |
           terraform init \

@@ -1,39 +1,19 @@
-# ============================================================
-# Workloads Module Input Variables
-# Type declarations only - no defaults (values passed from parent)
-# ============================================================
-
-variable "naming_patterns" {
-  description = "Map of resource types to workload-specific names from common module"
-  type        = map(map(string))
-}
-
 variable "location" {
-  description = "Azure region (from common module)"
+  description = "Azure region for resource deployment"
   type        = string
 }
 
+variable "naming_patterns" {
+  description = "Map of naming patterns from common module"
+  type        = any
+}
+
 variable "common_tags" {
-  description = "Common tags (from common module)"
+  description = "Common tags to apply to all resources"
   type        = map(string)
 }
 
-variable "vnet_address_space" {
-  description = "Address space for the Sales VNet"
-  type        = list(string)
-}
-
-variable "subnet_aks_prefix" {
-  description = "Address prefix for the AKS Nodes subnet"
-  type        = list(string)
-}
-
-variable "subnet_ingress_prefix" {
-  description = "Address prefix for the Ingress subnet"
-  type        = list(string)
-}
-
-variable "acr_id" {
-  description = "Resource ID of the global ACR for AcrPull assignment"
+variable "log_analytics_workspace_id" {
+  description = "Resource ID of the central Log Analytics Workspace for diagnostics"
   type        = string
 }

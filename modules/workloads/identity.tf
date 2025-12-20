@@ -22,7 +22,7 @@ resource "azurerm_user_assigned_identity" "aks" {
 
 # Role Assignment: AcrPull on Global ACR
 resource "azurerm_role_assignment" "acr_pull" {
-  provider = azurerm.hq # Assignment scope is the ACR, usually managed in HQ/Root context
+  provider = azurerm.root # Assignment scope is the ACR in the ROOT subscription
 
   scope                = var.acr_id
   role_definition_name = "AcrPull"
