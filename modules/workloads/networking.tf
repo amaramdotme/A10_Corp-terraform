@@ -53,9 +53,8 @@ resource "azurerm_monitor_diagnostic_setting" "vnet_sales" {
   target_resource_id         = azurerm_virtual_network.sales.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
 
-  metric {
+  enabled_metric {
     category = "AllMetrics"
-    enabled  = true
   }
 }
 
