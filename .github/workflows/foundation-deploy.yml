@@ -27,7 +27,6 @@ jobs:
   terraform-plan:
     name: Terraform Plan (Foundation)
     runs-on: ubuntu-latest
-    environment: global
 
     steps:
       - name: Checkout code

@@ -141,7 +141,6 @@ jobs:
     name: Terraform Plan (Workloads)
     runs-on: ubuntu-latest
     needs: [determine-environment, check-prerequisites]
-    environment: ${{ needs.determine-environment.outputs.environment }}
 
     steps:
       - name: Checkout code
