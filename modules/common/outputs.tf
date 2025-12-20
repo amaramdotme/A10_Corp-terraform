@@ -48,6 +48,21 @@ output "workloads" {
   value       = local.workloads
 }
 
+output "root_resource_group_name" {
+  description = "Name of the permanent infrastructure resource group"
+  value       = var.root_resource_group_name
+}
+
+output "root_key_vault_name" {
+  description = "Name of the permanent infrastructure Key Vault"
+  value       = var.root_key_vault_name
+}
+
+output "root_storage_account_name" {
+  description = "Name of the permanent infrastructure Storage Account"
+  value       = var.root_storage_account_name
+}
+
 # ============================================================
 # Subscription IDs from Key Vault
 # ============================================================
@@ -56,6 +71,11 @@ output "tenant_id" {
   description = "Azure Tenant ID from authenticated session"
   value       = data.azurerm_client_config.current.tenant_id
   sensitive   = true
+}
+
+output "root_subscription_id" {
+  description = "Azure Subscription ID for the root/default provider"
+  value       = data.azurerm_client_config.current.subscription_id
 }
 
 output "hq_subscription_id" {

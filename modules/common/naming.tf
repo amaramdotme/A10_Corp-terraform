@@ -7,13 +7,15 @@
 locals {
   # Map Azure resource types to their CAF resource type prefixes
   resource_type_map = {
-    "azurerm_resource_group"   = "rg"
-    "azurerm_management_group" = "mg"
-    "azurerm_virtual_machine"  = "vm"
-    "azurerm_policy_group"     = "pg"
-    "azurerm_storage_account"  = "st"
-    # Add more resource types as needed
-    # "azurerm_virtual_network"   = "vnet"
+    "azurerm_resource_group"         = "rg"
+    "azurerm_management_group"       = "mg"
+    "azurerm_virtual_machine"        = "vm"
+    "azurerm_policy_group"           = "pg"
+    "azurerm_storage_account"        = "st"
+    "azurerm_container_registry"     = "acr"
+    "azurerm_virtual_network"        = "vnet"
+    "azurerm_subnet"                 = "snet"
+    "azurerm_user_assigned_identity" = "id"
   }
 
   # Global workloads list
@@ -24,11 +26,15 @@ locals {
   # include_env = true  => {prefix}-{org}-{workload}-{env}
   # include_env = false => {prefix}-{org}-{workload}
   resource_include_env = {
-    "azurerm_resource_group"   = true
-    "azurerm_virtual_machine"  = true
-    "azurerm_management_group" = false
-    "azurerm_policy_group"     = false
-    "azurerm_storage_account"  = true
+    "azurerm_resource_group"         = true
+    "azurerm_virtual_machine"        = true
+    "azurerm_management_group"       = false
+    "azurerm_policy_group"           = false
+    "azurerm_storage_account"        = true
+    "azurerm_container_registry"     = false
+    "azurerm_virtual_network"        = true
+    "azurerm_subnet"                 = true
+    "azurerm_user_assigned_identity" = true
   }
 
   # Optional validation helpers
@@ -63,7 +69,7 @@ locals {
 
 locals {
   # Resources that don't support hyphens (alphanumeric only)
-  no_hyphen_resources = toset(["azurerm_storage_account"])
+  no_hyphen_resources = toset(["azurerm_storage_account", "azurerm_container_registry"])
 
   naming_patterns = {
     for resource, include_env in local.resource_include_env :

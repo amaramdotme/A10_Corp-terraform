@@ -13,6 +13,11 @@ module "common" {
   org_name    = var.org_name
   location    = var.location
   common_tags = var.common_tags
+
+  # Pass infrastructure constants
+  root_resource_group_name  = var.root_resource_group_name
+  root_key_vault_name       = var.root_key_vault_name
+  root_storage_account_name = var.root_storage_account_name
 }
 
 # Call foundation module for management groups and subscription associations

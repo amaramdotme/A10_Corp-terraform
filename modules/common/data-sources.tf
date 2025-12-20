@@ -12,8 +12,15 @@ data "azurerm_client_config" "current" {}
 # Reference to the Key Vault
 # Contains all environment-specific subscription IDs
 data "azurerm_key_vault" "terraform" {
-  name                = "kv-root-terraform"
-  resource_group_name = "rg-root-iac"
+  name                = var.root_key_vault_name
+  resource_group_name = var.root_resource_group_name
+}
+
+# Reference to the Storage Account
+# Used for plan uploads and state management
+data "azurerm_storage_account" "terraform" {
+  name                = var.root_storage_account_name
+  resource_group_name = var.root_resource_group_name
 }
 
 # Fetch subscription IDs from Key Vault based on environment

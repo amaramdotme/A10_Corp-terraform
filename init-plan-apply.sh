@@ -165,7 +165,12 @@ cd "$WORK_DIR" || error_exit "Failed to change to $WORK_DIR directory"
 case $ACTION in
     init)
         echo -e "${GREEN}Initializing Terraform...${NC}"
-        terraform init -backend-config="$BACKEND_CONFIG"
+        # Dynamically pass backend config from environment variables
+        # This allows for easy DR and parallel stack deployments
+        terraform init \
+            -backend-config="resource_group_name=${TF_VAR_root_resource_group_name}" \
+            -backend-config="storage_account_name=${TF_VAR_root_storage_account_name}" \
+            -backend-config="$BACKEND_CONFIG"
         ;;
     plan)
         if [ -n "$VAR_FILE" ]; then

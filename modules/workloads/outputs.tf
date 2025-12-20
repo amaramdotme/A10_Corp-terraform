@@ -1,52 +1,54 @@
 # ============================================================
 # Workloads Module Outputs
-# Expose resource group information for reference
 # ============================================================
 
-output "resource_group_shared_id" {
-  description = "ID of the shared/common resource group"
-  value       = azurerm_resource_group.shared_common.id
-}
-
-output "resource_group_shared_name" {
-  description = "Name of the shared/common resource group"
-  value       = azurerm_resource_group.shared_common.name
-}
-
-output "resource_group_sales_id" {
-  description = "ID of the sales resource group"
-  value       = azurerm_resource_group.sales.id
-}
-
-output "resource_group_sales_name" {
-  description = "Name of the sales resource group"
-  value       = azurerm_resource_group.sales.name
-}
-
-output "resource_group_service_id" {
-  description = "ID of the service resource group"
-  value       = azurerm_resource_group.service.id
-}
-
-output "resource_group_service_name" {
-  description = "Name of the service resource group"
-  value       = azurerm_resource_group.service.name
-}
-
 output "resource_groups" {
-  description = "Map of all resource group names and resource IDs"
+  description = "Resource Group names and IDs"
   value = {
     shared = {
-      id   = azurerm_resource_group.shared_common.id
       name = azurerm_resource_group.shared_common.name
+      id   = azurerm_resource_group.shared_common.id
     }
     sales = {
-      id   = azurerm_resource_group.sales.id
       name = azurerm_resource_group.sales.name
+      id   = azurerm_resource_group.sales.id
     }
     service = {
-      id   = azurerm_resource_group.service.id
       name = azurerm_resource_group.service.name
+      id   = azurerm_resource_group.service.id
     }
   }
+}
+
+# ============================================================
+# Networking Outputs
+# ============================================================
+
+output "vnet_id" {
+  description = "ID of the Sales VNet"
+  value       = azurerm_virtual_network.sales.id
+}
+
+output "subnet_id_aks_nodes" {
+  description = "ID of the AKS Nodes subnet"
+  value       = azurerm_subnet.aks_nodes.id
+}
+
+output "subnet_id_ingress" {
+  description = "ID of the Ingress subnet"
+  value       = azurerm_subnet.ingress.id
+}
+
+# ============================================================
+# Identity Outputs
+# ============================================================
+
+output "identity_id_aks" {
+  description = "Resource ID of the AKS User Assigned Identity"
+  value       = azurerm_user_assigned_identity.aks.id
+}
+
+output "identity_client_id_aks" {
+  description = "Client ID of the AKS User Assigned Identity"
+  value       = azurerm_user_assigned_identity.aks.client_id
 }

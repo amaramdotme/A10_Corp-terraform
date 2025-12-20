@@ -25,3 +25,13 @@ output "subscription_associations" {
   description = "Subscription to management group associations"
   value       = module.foundation.subscription_associations
 }
+
+output "acr_id" {
+  description = "Resource ID of the global ACR"
+  value       = azurerm_container_registry.shared.id
+}
+
+output "acr_name" {
+  description = "Name of the global ACR"
+  value       = azurerm_container_registry.shared.name
+}

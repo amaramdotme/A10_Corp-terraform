@@ -1,25 +1,41 @@
 # ============================================================
-# Foundation Root Module - Input Variables
+# Foundation Root Variables
 # ============================================================
+# See modules/common/variables.tf for full descriptions
 
 variable "org_name" {
-  description = "Organization name used in resource naming (e.g., 'a10corp')"
+  description = "Organization name"
   type        = string
   default     = "a10corp"
 }
 
 variable "location" {
-  description = "Azure region for resources (e.g., 'eastus')"
+  description = "Azure region"
   type        = string
   default     = "eastus"
 }
 
 variable "common_tags" {
-  description = "Common tags to apply to all resources"
+  description = "Common tags"
   type        = map(string)
   default = {
-    Environment = "Global"
-    ManagedBy   = "Terraform"
-    Module      = "Foundation"
+    ManagedBy  = "Terraform"
+    Owner      = "A10Corp"
+    CostCenter = "Engineering"
   }
+}
+
+variable "root_resource_group_name" {
+  description = "Name of the permanent infrastructure resource group"
+  type        = string
+}
+
+variable "root_key_vault_name" {
+  description = "Name of the permanent infrastructure Key Vault"
+  type        = string
+}
+
+variable "root_storage_account_name" {
+  description = "Name of the permanent infrastructure Storage Account"
+  type        = string
 }

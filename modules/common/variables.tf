@@ -36,6 +36,21 @@ variable "org_name" {
   }
 }
 
+variable "root_resource_group_name" {
+  description = "Name of the permanent infrastructure resource group"
+  type        = string
+}
+
+variable "root_key_vault_name" {
+  description = "Name of the permanent infrastructure Key Vault"
+  type        = string
+}
+
+variable "root_storage_account_name" {
+  description = "Name of the permanent infrastructure Storage Account"
+  type        = string
+}
+
 variable "common_tags" {
   description = "Common tags to apply to all resources"
   type        = map(string)
