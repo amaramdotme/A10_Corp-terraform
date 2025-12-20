@@ -101,7 +101,10 @@ jobs:
       - name: Check Foundation State
         id: check-foundation-state
         run: |
-          terraform init -backend-config="environments/backend.hcl"
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TF_VAR_root_resource_group_name }}" \
+            -backend-config="storage_account_name=${{ vars.TF_VAR_root_storage_account_name }}" \
+            -backend-config="environments/backend.hcl"
 
           # Check if state exists and has resources
           RESOURCE_COUNT=$(terraform state list 2>/dev/null | wc -l)
@@ -130,6 +133,9 @@ jobs:
           ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
           ARM_USE_OIDC: true
+          TF_VAR_root_resource_group_name: ${{ vars.TF_VAR_root_resource_group_name }}
+          TF_VAR_root_key_vault_name: ${{ vars.TF_VAR_root_key_vault_name }}
+          TF_VAR_root_storage_account_name: ${{ vars.TF_VAR_root_storage_account_name }}
 
   terraform-plan:
     name: Terraform Plan (Workloads)
@@ -159,7 +165,11 @@ jobs:
         continue-on-error: true
 
       - name: Terraform Init
-        run: terraform init -backend-config="environments/backend-${{ needs.determine-environment.outputs.environment }}.hcl"
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TF_VAR_root_resource_group_name }}" \
+            -backend-config="storage_account_name=${{ vars.TF_VAR_root_storage_account_name }}" \
+            -backend-config="environments/backend-${{ needs.determine-environment.outputs.environment }}.hcl"
         working-directory: ./workloads
         env:
           ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
@@ -175,6 +185,9 @@ jobs:
           ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
           ARM_USE_OIDC: true
+          TF_VAR_root_resource_group_name: ${{ vars.TF_VAR_root_resource_group_name }}
+          TF_VAR_root_key_vault_name: ${{ vars.TF_VAR_root_key_vault_name }}
+          TF_VAR_root_storage_account_name: ${{ vars.TF_VAR_root_storage_account_name }}
 
       - name: Terraform Plan
         run: |
@@ -187,6 +200,9 @@ jobs:
           ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_ROOT_SUBSCRIPTION_ID }}
           ARM_USE_OIDC: true
+          TF_VAR_root_resource_group_name: ${{ vars.TF_VAR_root_resource_group_name }}
+          TF_VAR_root_key_vault_name: ${{ vars.TF_VAR_root_key_vault_name }}
+          TF_VAR_root_storage_account_name: ${{ vars.TF_VAR_root_storage_account_name }}
 
       - name: Generate Human-Readable Plan
         run: terraform show -no-color ${{ needs.determine-environment.outputs.environment }}.tfplan > ${{ needs.determine-environment.outputs.environment }}-plan.txt
@@ -198,7 +214,7 @@ jobs:
           ENV="${{ needs.determine-environment.outputs.environment }}"
           BLOB_NAME="plans/workloads-${ENV}-${TIMESTAMP}-${{ github.run_number }}.txt"
           az storage blob upload \
-            --account-name storerootblob \
+            --account-name ${{ vars.TF_VAR_root_storage_account_name }} \
             --container-name "workloads-${ENV}" \
             --name "$BLOB_NAME" \
             --file "${ENV}-plan.txt" \
@@ -313,7 +329,11 @@ jobs:
           path: workloads/
 
       - name: Terraform Init
-        run: terraform init -backend-config="environments/backend-${{ needs.determine-environment.outputs.environment }}.hcl"
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TF_VAR_root_resource_group_name }}" \
+            -backend-config="storage_account_name=${{ vars.TF_VAR_root_storage_account_name }}" \
+            -backend-config="environments/backend-${{ needs.determine-environment.outputs.environment }}.hcl"
         working-directory: ./workloads
         env:
           ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
