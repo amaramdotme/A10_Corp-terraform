@@ -21,7 +21,6 @@ terraform {
 
 provider "azurerm" {
   features {}
-  resource_provider_registrations = "none"
 }
 
 # ============================================================
@@ -34,19 +33,16 @@ provider "azurerm" {
   alias           = "hq"
   subscription_id = module.common.hq_subscription_id
   features {}
-  resource_provider_registrations = "none"
 }
 
 provider "azurerm" {
   alias           = "sales"
   subscription_id = module.common.sales_subscription_id
   features {}
-  resource_provider_registrations = "none"
 }
 
 provider "azurerm" {
   alias           = "service"
   subscription_id = module.common.service_subscription_id
   features {}
-  resource_provider_registrations = "none"
 }

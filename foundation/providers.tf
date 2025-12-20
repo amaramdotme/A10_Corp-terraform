@@ -14,5 +14,4 @@ terraform {
 # The common module will fetch subscription IDs from Key Vault using this provider
 provider "azurerm" {
   features {}
-  resource_provider_registrations = "none"
 }
