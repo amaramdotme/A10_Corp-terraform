@@ -245,3 +245,7 @@ source ../.env && terraform destroy -var-file="environments/dev.tfvars"
 - **Modules**: `modules/common/*`, `modules/foundation/*`, `modules/workloads/*`, `modules/policies/*`
 - **Pipelines**: `.github/workflows/*`
 - **Naming Logic**: `modules/common/naming.tf`
+
+
+## Grok review 
+https://grok.com/share/c2hhcmQtNQ_36200033-9e42-45e2-9458-85f9a1648d01
