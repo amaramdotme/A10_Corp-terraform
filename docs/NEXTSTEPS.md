@@ -8,7 +8,7 @@
 
 ### 1. ✅ Verify Centralized Tagging - COMPLETE
 **Status**: ✅ Verified 2025-12-20
-**Success**: Resources across root, dev, and stage subscriptions confirmed to have correct `Environment` tags.
+**Success**: Resources across root, dev, stage, and prod subscriptions confirmed to have correct `Environment` tags.
 
 ---
 
@@ -33,43 +33,57 @@
 
 ---
 
-## 🔄 Short-Term (This Week)
+### 5. ✅ Network Security & CI/CD Hardening - COMPLETE
+**Status**: ✅ Deployed 2025-12-20
+**Deliverables**:
+- **Network Security**: NSGs and Route Tables deployed to all environments (dev, stage, prod).
+- **Observability**: Workload networks shipping logs to Central LAW.
+- **CI/CD Security**: Integrated Trivy vulnerability scanning.
+- **Automation**: Optimized CI/CD to run Plans automatically and gate only Applies.
 
-### 5. Advanced Policy Enforcement (Phase 2)
+---
+
+## 🔄 Short-Term (Platform Refinement)
+
+### 6. Security Review & Least Privilege Audit
 **Status**: Next Priority
 **Scope**:
-- **Naming Convention**: Enforce `*-a10corp-*` pattern check on Resource Groups to prevent "rogue" unbranded resources.
-- **Observability Audit**: Add "Audit if Diagnostic Settings are missing" policy to ensure resources connect to the Central Log Analytics Workspace.
+- Review `Network Contributor` and `AcrPull` role assignments.
+- Ensure the Workload Identities are granted minimum required access.
+- Audit Policy compliance report in Azure Portal for any "Non-Compliant" existing resources.
+
+### 7. Documentation for App Teams (Hand-off)
+**Status**: Planned
+**Scope**:
+- Create a `PLATFORM_USER_GUIDE.md`.
+- Document how external repos (App/Compute) should reference this VNet, Subnets, and Identities.
+- Provide example Terraform code for App teams to "consume" these platform resources via data sources.
 
 ---
 
-### 6. Workload Observability Integration
-**Status**: Pending
-**Scope**: Update `modules/workloads` to:
-- Retrieve the Central LAW ID from Foundation outputs.
-- Configure Diagnostic Settings for Workload resources (VNets, NSGs, AKS) to ship logs to that ID.
+## 📋 Medium-Term (Optimization)
 
----
-
-## 📋 Medium-Term (This Month)
-
-### 7. Security Review & Least Privilege Audit
-**Status**: Pending
-**Scope**: Review `Network Contributor` and `AcrPull` role assignments to ensure they are scoped to minimum required levels.
+### 8. State File Migration to Terraform Cloud
+**Status**: Parking Lot
+**Rationale**: Evaluate if Terraform Cloud is needed for state locking or if Azure Storage + GitHub Actions is sufficient.
 
 ---
 
 ## 🅿️ Parking Lot (Future Consideration)
 
-### 8. Networking Module (Advanced)
-### 9. State File Migration to Terraform Cloud
-### 10. Infrastructure Testing (Terratest)
+### 9. Naming Policy (Platform Enforcement)
+**Status**: Deprioritized (Relying on Code Enforcement via `naming.tf`)
+**Reason**: Conflict with Azure-generated resources.
+
+### 10. Networking Module (Advanced)
+**Status**: Parking Lot
+**Scope**: Hub-and-Spoke topology, Firewall integration (if needed).
 
 ---
 
 ## ⚠️ Known Issues & Blockers
 
-**None currently** - Core infrastructure, Governance, and CI/CD are fully operational.
+**None currently** - Platform Landing Zone is fully operational and ready for consumers.
 
 ---
 
@@ -81,11 +95,11 @@
 |--------|--------|--------|--------|
 | Management Groups | 3 | 3 | ✅ 100% |
 | Subscription Associations | 3 | 3 | ✅ 100% |
-| Resource Groups (dev) | 3 | 3 | ✅ 100% |
+| Resource Groups (All Envs) | 9 | 9 | ✅ 100% |
 | CI/CD Pipelines | 4 | 4 | ✅ 100% |
 | Governance Policies | 4 | 4 | ✅ 100% |
 | Centralized Logging | 1 | 1 | ✅ 100% |
+| Network Security (NSGs) | 6 | 6 | ✅ 100% |
 
-### Next Milestone: Deep Observability
-- All workloads automatically shipping logs to Foundation
-- Policy auditing for "blind" resources
+### Next Milestone: Platform Readiness
+- Platform is "Gold Standard" and ready for Application Team onboarding.

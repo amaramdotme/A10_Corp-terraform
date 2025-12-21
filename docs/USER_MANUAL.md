@@ -34,7 +34,7 @@ This guide explains how to operate, extend, and safely use this repository to ma
    - `./init-plan-apply.sh --workloads --env dev plan`
    - `./init-plan-apply.sh --workloads --env dev apply`
 4) **Prefer CI/CD for changes**:
-   - Open PR → GitHub Actions generates plans → Approve environment → Apply runs.
+   - Open PR → GitHub Actions generates plans (auto) → Approve environment → Apply runs (gated).
 
 ---
 
@@ -46,19 +46,20 @@ The repo separates “permanent” organizational structure from “replaceable�
   - The "brain" of the project.
   - Exposes `naming_patterns`, subscription IDs, and shared variables.
 - **Foundation** (one-time, global)
-  - Creates management groups and associates subscriptions.
-  - Deploys the Global Azure Container Registry (`acra10corpsales`).
+  - Creates management groups, policies, and subscription associations.
+  - Deploys Global Artifacts: ACR (`acra10corpsales`) and Central Log Analytics (`log-a10corp-hq`).
   - Never destroy during normal operations.
 - **Workloads** (per-environment, safe to destroy/recreate)
   - Creates environment-specific resource groups in the right subscriptions (hq/sales/service).
-  - Deploys networking (VNets, Subnets) and identities (Managed Identities).
+  - Deploys networking (VNets, Subnets, NSGs, Routes) and identities.
+  - Ships all logs to the Foundation's Central Log Analytics Workspace.
 
 ---
 
 ## 2) Operating Model
 
 ### Branching & CI/CD
-- **PR to `main`**: Triggers plan jobs; comments plan summaries on PR.
+- **PR to `main`**: Triggers automated plans and Trivy security scans.
 - **Push to `main`**: Triggers plan, then apply (requires manual approval for `global` and `prod`).
 - **Workflows**: Located in `.github/workflows/`. Includes deploy, destroy, and OIDC test workflows.
 
@@ -73,23 +74,20 @@ The repo separates “permanent” organizational structure from “replaceable�
 
 ---
 
-## 3) Governance
+## 3) Governance & Observability
 
-### RBAC (Minimum set for CI/CD principal)
-- **Contributor** on all 4 subscriptions (root/hq/sales/service).
-- **Management Group Contributor** at tenant root.
-- **User Access Administrator** on workload subscriptions.
-- **Key Vault Secrets User** on `kv-root-terraform`.
-- **Storage Blob Data Contributor** on `storerootblob`.
+### Policies (Native Terraform)
+- Implemented in `modules/policies/`.
+- Assigned to `mg-a10corp-hq`.
+- **Key Rules**: Tagging (`Environment`), Locations (`eastus`), SKUs (B/D series), Secure Storage.
 
-### Naming Standards (CAF)
-- Implemented centrally in `modules/common/naming.tf`.
-- Follows a three-branch logic to handle Azure resource name restrictions (hyphens vs. no-hyphens).
+### Observability
+- **Central Sink**: `log-a10corp-hq` in the Root subscription.
+- **Diagnostics**: All Workload VNets/NSGs automatically ship logs here.
 
-### Secrets
-- No secrets in Git.
-- Subscription IDs are fetched at runtime from Key Vault.
-- Local `.env` file is gitignored but essential for CLI operations.
+### Network Security
+- **Perimeter**: All Subnets protected by NSGs.
+- **Routing**: Route Tables deployed with default Internet routes (ready for Firewall injection).
 
 ---
 
@@ -103,60 +101,75 @@ TERRAFORM COMMANDS - THREE-MODULE ARCHITECTURE
 ###### QUICK START HERE ######
 
 ###### FOUNDATION STARTS ######
---- Init ---
+---
+Init ---
 cd foundation/
 source ../.env && terraform init -backend-config="environments/backend.hcl"
 
 #remove backend.tf to store locally
 source ../.env && terraform init 
 
---- Plan & Apply ---
+---
+Plan & Apply ---
 terraform fmt -recursive && terraform validate
 
 terraform plan -out=foundation.tfplan
 terraform apply foundation.tfplan
 
---- State ---
+---
+State ---
 terraform state list
 terraform state show module.foundation.azurerm_management_group.hq
 terraform state pull > backup-foundation-$(date +%Y%m%d).json
 
---- Import ---
+---
+Policy Debugging ---
+# Check if policy exists in state
+terraform state show module.policies.azurerm_management_group_policy_assignment.tagging
+
+---
+Import ---
 terraform import \
   module.foundation.azurerm_management_group.hq \
   /providers/Microsoft.Management/managementGroups/mg-a10corp-hq
 
---- Outputs ---
+---
+Outputs ---
 terraform output
 terraform output -json > foundation-outputs.json
 
 
---- Destroy ---
+---
+Destroy ---
 source ../.env && terraform destroy 
 
 ###### FOUNDATION ENDS ######
 
 ###### WORKLOADS STARTS ######
 
---- Init ---
+---
+Init ---
 cd workloads
 source ../.env && terraform init -backend-config="environments/backend-dev.hcl"
 
---- Plan & Apply ---
+---
+Plan & Apply ---
 terraform fmt -recursive && terraform validate
 
 terraform plan -var-file="environments/dev.tfvars" -out=workloads.tfplan
 
 terraform apply "workloads.tfplan"
 
---- State ---
+---
+State ---
 terraform state list
 terraform state show module.workloads.azurerm_resource_group.shared_common
 terraform state show module.workloads.azurerm_resource_group.sales
-terraform state show module.workloads.azurerm_resource_group.service
+terraform state show module.workloads.azurerm_network_security_group.ingress
 terraform state pull > backup-workloads-$(date +%Y%m%d).json
 
---- Import ---
+---
+Import ---
 # Import shared/common resource group (HQ subscription)
 terraform import \
   module.workloads.azurerm_resource_group.shared_common \
@@ -172,12 +185,14 @@ terraform import \
   module.workloads.azurerm_resource_group.service \
   /subscriptions/<SERVICE_SUB_ID>/resourceGroups/rg-a10corp-service-dev
 
---- Outputs ---fddf
+---
+Outputs ---fddf
 terraform output
 terraform output -json > workloads-outputs.json
 terraform output resource_groups
 
---- Destroy ---
+---
+Destroy ---
 source ../.env && terraform destroy -var-file="environments/dev.tfvars"
 
 ###### WORKLOADS ENDS ######
@@ -186,7 +201,8 @@ source ../.env && terraform destroy -var-file="environments/dev.tfvars"
 - **Helper Script Supremacy**: Always prefer using `./init-plan-apply.sh` for Terraform operations. It handles dynamic backend injection which is critical for this architecture.
 - **Explicit Provider Aliasing**: When adding workload resources, always use the aliased providers (`azurerm.hq`, `azurerm.sales`, `azurerm.service`) to ensure resources land in the correct subscription.
 - **ACR ID Construction**: Never use `data` sources to fetch the Global ACR ID in the workloads module. Always construct the ID string manually to prevent plan-time deadlocks during environment creation.
-- **Documentation Single Source of Truth**: Adhere to the 4-file documentation strategy (`ARCHITECTURE.md`, `DECISIONS.md`, `NEXTSTEPS.md`, `CLAUDE.md`). Do not duplicate facts across these files.
+- **Centralized Observability**: All workloads MUST link to the `log_analytics_workspace_id` passed from Foundation. Do not create local workspaces.
+- **Documentation Single Source of Truth**: Adhere to the 4-file documentation strategy (`ARCHITECTURE.md`, `DECISIONS.md`, `NEXTSTEPS.md`, `USER_MANUAL.md`). Do not duplicate facts across these files.
 - **Identity Principle**: The `id-a10corp-sales-dev` identity is the AKS Control Plane identity. It must have `AcrPull` on the global ACR and `Network Contributor` on the specific VNet, but **never** on the whole Resource Group (Least Privilege).
 
 ---
@@ -215,8 +231,10 @@ source ../.env && terraform destroy -var-file="environments/dev.tfvars"
 
 ## 6) Troubleshooting
 
+- **“PolicyDefinitionNotFound”**: Ensure the Policy Definition exists in Azure (or use the generic Display Name lookup).
 - **“subscription ID could not be determined”**: Ensure you have run `source .env`.
 - **Key Vault access denied**: Verify the `Key Vault Secrets User` role assignment and that your default provider targets the `sub-root` subscription.
+- **Trivy Failures**: Check GitHub Actions logs. Use `# trivy:ignore:AVD-AZU-XXXX` for intentional exceptions (like public ingress).
 - **State locking**: If a state is locked, verify no GitHub Actions are running before manually breaking the lease in the Azure portal.
 
 ---
@@ -224,6 +242,6 @@ source ../.env && terraform destroy -var-file="environments/dev.tfvars"
 ## Appendix: Key File Map
 
 - **Root callers**: `foundation/main.tf`, `workloads/main.tf`
-- **Modules**: `modules/common/*`, `modules/foundation/*`, `modules/workloads/*`
+- **Modules**: `modules/common/*`, `modules/foundation/*`, `modules/workloads/*`, `modules/policies/*`
 - **Pipelines**: `.github/workflows/*`
 - **Naming Logic**: `modules/common/naming.tf`
