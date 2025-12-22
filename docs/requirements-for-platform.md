@@ -13,9 +13,15 @@
 
 ### B. Storage Account (for Application Backups)
 *   **Purpose:** Store JSON backups of application submissions for long-term durability.
-*   **Containers required:** `backups-dev`, `backups-stage`, `backups-prod`.
-*   **Access:** Must allow "Azure Services" to bypass firewall for cross-region access.
-*   **Status:** ✅ Implemented (`sta10corpsales`)
+*   **Name:** `sta10corpsales` (mirrors `storerootblob` configuration)
+*   **Configuration:**
+    *   **SKU:** Standard_LRS (Locally-redundant storage)
+    *   **Access Tier:** Cool (optimized for infrequent access, cost-effective)
+    *   **Network Rules:** Allow all traffic with Azure Services bypass
+    *   **Public Blob Access:** Disabled (security)
+    *   **Access Control:** RBAC-based (AKS managed identity has Storage Blob Data Contributor)
+*   **Containers required:** `backups-dev`, `backups-stage`, `backups-prod`
+*   **Status:** ✅ Implemented and aligned with Terraform state storage (2025-12-22)
 
 ### C. Governance & Policy
 *   **Allowed Locations:** Update policy to allow `eastus2` (failover for saturated `eastus` services like SQL/Compute).
