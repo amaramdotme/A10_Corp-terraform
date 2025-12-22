@@ -10,10 +10,11 @@ resource "azurerm_storage_account" "backups" {
   resource_group_name      = data.azurerm_resource_group.root.name
   location                 = data.azurerm_resource_group.root.location
   account_tier             = "Standard"
-  account_replication_type = "LRS" # Locally-redundant storage like storerootblob
+  account_replication_type = "LRS"  # Locally-redundant storage like storerootblob
   access_tier              = "Cool" # Cool tier for infrequent access
 
   # Allow all traffic like storerootblob, with Azure Services bypass
+  # trivy:ignore:AVD-AZU-0012 Mirroring storerootblob configuration - RBAC controls access
   network_rules {
     default_action             = "Allow"
     bypass                     = ["AzureServices"]
@@ -22,7 +23,7 @@ resource "azurerm_storage_account" "backups" {
   }
 
   # Blob properties for security
-  public_network_access_enabled = true
+  public_network_access_enabled   = true
   allow_nested_items_to_be_public = false # Disable public blob access for security
 
   tags = merge(

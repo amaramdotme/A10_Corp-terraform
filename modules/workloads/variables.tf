@@ -17,7 +17,7 @@ variable "log_analytics_workspace_id" {
 
   description = "Resource ID of the central Log Analytics Workspace for diagnostics"
 
-  type        = string
+  type = string
 
 }
 
@@ -27,7 +27,7 @@ variable "vnet_address_space" {
 
   description = "Address space for the Workload VNet"
 
-  type        = list(string)
+  type = list(string)
 
 }
 
@@ -37,7 +37,7 @@ variable "subnet_aks_prefix" {
 
   description = "Address prefixes for the AKS nodes subnet"
 
-  type        = list(string)
+  type = list(string)
 
 }
 
@@ -47,7 +47,7 @@ variable "subnet_ingress_prefix" {
 
   description = "Address prefixes for the Ingress subnet"
 
-  type        = list(string)
+  type = list(string)
 
 }
 
@@ -62,7 +62,7 @@ variable "storage_account_backups_id" {
 
   description = "Resource ID of the permanent backup storage account"
 
-  type        = string
+  type = string
 
 }
 
@@ -72,6 +72,6 @@ variable "storage_account_backups_name" {
 
   description = "Name of the permanent backup storage account"
 
-  type        = string
+  type = string
 
 }

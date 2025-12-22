@@ -7,15 +7,15 @@
 locals {
   # Map Azure resource types to their CAF resource type prefixes
   resource_type_map = {
-    "azurerm_resource_group"         = "rg"
-    "azurerm_management_group"       = "mg"
-    "azurerm_virtual_machine"        = "vm"
-    "azurerm_policy_group"           = "pg"
-    "azurerm_storage_account"        = "st"
-    "azurerm_container_registry"     = "acr"
-    "azurerm_virtual_network"        = "vnet"
-    "azurerm_subnet"                 = "snet"
-    "azurerm_user_assigned_identity" = "id"
+    "azurerm_resource_group"          = "rg"
+    "azurerm_management_group"        = "mg"
+    "azurerm_virtual_machine"         = "vm"
+    "azurerm_policy_group"            = "pg"
+    "azurerm_storage_account"         = "st"
+    "azurerm_container_registry"      = "acr"
+    "azurerm_virtual_network"         = "vnet"
+    "azurerm_subnet"                  = "snet"
+    "azurerm_user_assigned_identity"  = "id"
     "azurerm_log_analytics_workspace" = "log"
     "azurerm_application_insights"    = "appi"
     "azurerm_network_security_group"  = "nsg"
@@ -30,15 +30,15 @@ locals {
   # include_env = true  => {prefix}-{org}-{workload}-{env}
   # include_env = false => {prefix}-{org}-{workload}
   resource_include_env = {
-    "azurerm_resource_group"         = true
-    "azurerm_virtual_machine"        = true
-    "azurerm_management_group"       = false
-    "azurerm_policy_group"           = false
-    "azurerm_storage_account"        = false
-    "azurerm_container_registry"     = false
-    "azurerm_virtual_network"        = true
-    "azurerm_subnet"                 = true
-    "azurerm_user_assigned_identity" = true
+    "azurerm_resource_group"          = true
+    "azurerm_virtual_machine"         = true
+    "azurerm_management_group"        = false
+    "azurerm_policy_group"            = false
+    "azurerm_storage_account"         = false
+    "azurerm_container_registry"      = false
+    "azurerm_virtual_network"         = true
+    "azurerm_subnet"                  = true
+    "azurerm_user_assigned_identity"  = true
     "azurerm_log_analytics_workspace" = false # Global monitoring
     "azurerm_application_insights"    = true  # Apps are env-specific
     "azurerm_network_security_group"  = true
