@@ -34,7 +34,7 @@ locals {
     "azurerm_virtual_machine"        = true
     "azurerm_management_group"       = false
     "azurerm_policy_group"           = false
-    "azurerm_storage_account"        = true
+    "azurerm_storage_account"        = false
     "azurerm_container_registry"     = false
     "azurerm_virtual_network"        = true
     "azurerm_subnet"                 = true
