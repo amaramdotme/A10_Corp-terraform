@@ -3,9 +3,10 @@ variable "management_group_id" {
   type        = string
 }
 
-variable "location" {
-  description = "The allowed Azure region for resources (e.g., eastus)"
-  type        = string
+variable "allowed_locations" {
+  description = "List of allowed Azure regions for resources"
+  type        = list(string)
+  default     = ["eastus", "eastus2"]
 }
 
 variable "allowed_vm_skus" {

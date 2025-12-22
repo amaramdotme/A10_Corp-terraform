@@ -15,6 +15,12 @@ variable "location" {
   default     = "eastus"
 }
 
+variable "allowed_locations" {
+  description = "List of allowed Azure regions"
+  type        = list(string)
+  default     = ["eastus", "eastus2"]
+}
+
 variable "common_tags" {
   description = "Common tags"
   type        = map(string)

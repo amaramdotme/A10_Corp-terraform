@@ -36,6 +36,16 @@ output "acr_name" {
   value       = azurerm_container_registry.shared.name
 }
 
+output "storage_account_backups_id" {
+  description = "Resource ID of the permanent application backup storage account"
+  value       = azurerm_storage_account.backups.id
+}
+
+output "storage_account_backups_name" {
+  description = "Name of the permanent application backup storage account"
+  value       = azurerm_storage_account.backups.name
+}
+
 output "log_analytics_workspace_id" {
   description = "Resource ID of the centralized Log Analytics Workspace"
   value       = azurerm_log_analytics_workspace.central.id

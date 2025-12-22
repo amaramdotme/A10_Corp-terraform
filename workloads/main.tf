@@ -46,6 +46,11 @@ locals {
   # Name: log-a10corp-hq (defined in naming.tf with include_env=false)
   law_name = module.common.naming_patterns["azurerm_log_analytics_workspace"]["hq"]
   law_id   = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${module.common.root_resource_group_name}/providers/Microsoft.OperationalInsights/workspaces/${local.law_name}"
+
+  # Construct Global Backup Storage Account ID and Name manually
+  # Name: sta10corpsales (defined in naming.tf as no-hyphen)
+  st_name = module.common.naming_patterns["azurerm_storage_account"]["sales"]
+  st_id   = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${module.common.root_resource_group_name}/providers/Microsoft.Storage/storageAccounts/${local.st_name}"
 }
 
 module "workloads" {
@@ -64,6 +69,10 @@ module "workloads" {
   subnet_ingress_prefix      = var.subnet_ingress_prefix
   acr_id                     = local.acr_id
   log_analytics_workspace_id = local.law_id
+
+  # Permanent Backup Storage
+  storage_account_backups_id   = local.st_id
+  storage_account_backups_name = local.st_name
 
   # Pass aliased providers to the module
   providers = {

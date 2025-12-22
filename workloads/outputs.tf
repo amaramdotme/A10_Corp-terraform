@@ -7,6 +7,11 @@ output "resource_groups" {
   value       = module.workloads.resource_groups
 }
 
+output "resource_group_name" {
+  description = "Name of the primary Sales resource group"
+  value       = module.workloads.resource_group_name
+}
+
 # ============================================================
 # Networking Outputs
 # ============================================================
@@ -38,4 +43,18 @@ output "identity_id_aks" {
 output "identity_client_id_aks" {
   description = "Client ID of the AKS User Assigned Identity"
   value       = module.workloads.identity_client_id_aks
+}
+
+# ============================================================
+# Storage Outputs
+# ============================================================
+
+output "storage_account_id" {
+  description = "Resource ID of the permanent backup storage account"
+  value       = module.workloads.storage_account_id
+}
+
+output "storage_account_name" {
+  description = "Name of the permanent backup storage account"
+  value       = module.workloads.storage_account_name
 }

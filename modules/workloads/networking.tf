@@ -71,6 +71,32 @@ resource "azurerm_network_security_group" "aks_nodes" {
   location            = azurerm_resource_group.sales.location
   resource_group_name = azurerm_resource_group.sales.name
 
+  # Requirement: AllowHttpInbound
+  security_rule {
+    name                       = "AllowHttpInbound"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+  }
+
+  # Requirement: AllowAzureLBInbound
+  security_rule {
+    name                       = "AllowAzureLBInbound"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "*"
+  }
+
   tags = merge(
     var.common_tags,
     {

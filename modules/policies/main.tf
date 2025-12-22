@@ -24,7 +24,7 @@ resource "azurerm_management_group_policy_assignment" "location" {
   parameters = <<PARAMETERS
 {
   "listOfAllowedLocations": {
-    "value": ["${var.location}"]
+    "value": [${join(",", formatlist("\"%s\"", var.allowed_locations))}]
   }
 }
 PARAMETERS

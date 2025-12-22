@@ -29,6 +29,15 @@ resource "azurerm_role_assignment" "acr_pull" {
   principal_id         = azurerm_user_assigned_identity.aks.principal_id
 }
 
+# Role Assignment: Storage Blob Data Contributor on Backups Storage
+resource "azurerm_role_assignment" "storage_contributor" {
+  provider = azurerm.root # Assignment scope is the Storage Account in the ROOT subscription
+
+  scope                = var.storage_account_backups_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.aks.principal_id
+}
+
 # Role Assignment: Network Contributor on VNet
 resource "azurerm_role_assignment" "network_contributor" {
   provider = azurerm.sales

@@ -42,5 +42,5 @@ module "policies" {
   source = "../modules/policies"
 
   management_group_id = module.foundation.management_group_hq_id
-  location            = module.common.location
+  allowed_locations   = var.allowed_locations
 }

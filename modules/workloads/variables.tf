@@ -54,8 +54,23 @@ variable "subnet_ingress_prefix" {
 
 
 variable "acr_id" {
-
   description = "Resource ID of the global ACR for AcrPull assignment"
+  type        = string
+}
+
+variable "storage_account_backups_id" {
+
+  description = "Resource ID of the permanent backup storage account"
+
+  type        = string
+
+}
+
+
+
+variable "storage_account_backups_name" {
+
+  description = "Name of the permanent backup storage account"
 
   type        = string
 
