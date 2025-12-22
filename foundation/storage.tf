@@ -3,12 +3,6 @@
 # Permanent artifact for storing application JSON submissions
 # ============================================================
 
-# Fetch current execution IP to allow Terraform to manage containers
-# This is required because default_action = "Deny" blocks the Terraform runner
-data "http" "current_ip" {
-  url = "https://api.ipify.org"
-}
-
 # Use the 'sales' workload name for the storage account
 # Since foundation has no environment, naming results in: sta10corpsales
 resource "azurerm_storage_account" "backups" {
@@ -16,15 +10,20 @@ resource "azurerm_storage_account" "backups" {
   resource_group_name      = data.azurerm_resource_group.root.name
   location                 = data.azurerm_resource_group.root.location
   account_tier             = "Standard"
-  account_replication_type = "GRS" # Requirements imply durability/long-term
+  account_replication_type = "LRS" # Locally-redundant storage like storerootblob
+  access_tier              = "Cool" # Cool tier for infrequent access
 
-  # Requirement: Must allow "Azure Services" to bypass firewall
+  # Allow all traffic like storerootblob, with Azure Services bypass
   network_rules {
-    default_action             = "Deny"
+    default_action             = "Allow"
     bypass                     = ["AzureServices"]
-    ip_rules                   = [chomp(data.http.current_ip.response_body)]
+    ip_rules                   = []
     virtual_network_subnet_ids = []
   }
+
+  # Blob properties for security
+  public_network_access_enabled = true
+  allow_nested_items_to_be_public = false # Disable public blob access for security
 
   tags = merge(
     module.common.common_tags,
