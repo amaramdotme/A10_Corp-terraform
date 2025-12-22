@@ -3,6 +3,12 @@
 # Permanent artifact for storing application JSON submissions
 # ============================================================
 
+# Fetch current execution IP to allow Terraform to manage containers
+# This is required because default_action = "Deny" blocks the Terraform runner
+data "http" "current_ip" {
+  url = "https://api.ipify.org"
+}
+
 # Use the 'sales' workload name for the storage account
 # Since foundation has no environment, naming results in: sta10corpsales
 resource "azurerm_storage_account" "backups" {
@@ -16,7 +22,7 @@ resource "azurerm_storage_account" "backups" {
   network_rules {
     default_action             = "Deny"
     bypass                     = ["AzureServices"]
-    ip_rules                   = []
+    ip_rules                   = [chomp(data.http.current_ip.response_body)]
     virtual_network_subnet_ids = []
   }
 
@@ -33,6 +39,6 @@ resource "azurerm_storage_account" "backups" {
 resource "azurerm_storage_container" "backups" {
   for_each              = toset(["dev", "stage", "prod"])
   name                  = "backups-${each.key}"
-  storage_account_name  = azurerm_storage_account.backups.name
+  storage_account_id    = azurerm_storage_account.backups.id
   container_access_type = "private"
 }
