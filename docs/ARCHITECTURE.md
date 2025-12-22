@@ -23,7 +23,7 @@ This repository manages the **Platform Landing Zone** for A10 Corp. It follows a
 ### 1. Governance & Guardrails
 Governance is enforced via **Native Terraform Policies** assigned at the `mg-a10corp-hq` level.
 - **Tagging**: Required `Environment` tag on Resource Groups.
-- **Location**: Restricted to `eastus`.
+- **Location**: Restricted to `eastus` (primary) and `eastus2` (failover).
 - **Cost**: Restricted VM SKUs (B and D series).
 - **Security**: Mandatory Secure Transfer (HTTPS) for Storage Accounts.
 
@@ -32,9 +32,15 @@ All platform logs are centralized in a **Permanent Log Analytics Workspace** (`l
 - **Persistence**: Logs outlive the workload environments.
 - **Coverage**: VNet metrics and NSG flow logs (Events/Rules) are automatically shipped to this workspace.
 
-### 3. Networking (The "Roads")
+### 3. Resilience & Disaster Recovery
+A **Permanent Backup Storage Account** (`sta10corpsales`) is provisioned in the Foundation layer.
+- **Purpose**: Long-term retention of application backups (JSON submissions).
+- **Structure**: Dedicated containers for each environment (`backups-dev`, `backups-stage`, `backups-prod`).
+- **Access**: Grants `Storage Blob Data Contributor` to AKS nodes and allows Azure Services to bypass firewall.
+
+### 4. Networking (The "Roads")
 The platform provides a **Network-Vended** model. Application teams are expected to deploy their compute (AKS, VMs) into the provided subnets:
-- `snet-*-aks-nodes`: Protected by NSG, intended for private compute nodes.
+- `snet-*-aks-nodes`: Protected by NSG (Allow HTTP/80, AzureLB), intended for private compute nodes.
 - `snet-*-ingress`: Protected by NSG (Allow HTTP/HTTPS), intended for Load Balancers/Ingress.
 - **Routing**: Each environment includes a Route Table with a default 0.0.0.0/0 Internet route.
 

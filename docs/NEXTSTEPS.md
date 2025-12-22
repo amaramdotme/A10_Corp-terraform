@@ -41,11 +41,19 @@
 - **CI/CD Security**: Integrated Trivy vulnerability scanning.
 - **Automation**: Optimized CI/CD to run Plans automatically and gate only Applies.
 
+### 6. ✅ Sales App Platform Requirements - COMPLETE
+**Status**: ✅ Deployed 2025-12-20
+**Deliverables**:
+- **Storage**: Permanent backup storage (`sta10corpsales`) with containers for all envs.
+- **Governance**: Policy update to allow `eastus2` failover.
+- **Networking**: Updated NSGs for AKS ingress (Port 80) and AzureLB.
+- **Identity**: Granted `Storage Blob Data Contributor` to AKS identities.
+
 ---
 
 ## 🔄 Short-Term (Platform Refinement)
 
-### 6. Security Review & Least Privilege Audit
+### 7. Security Review & Least Privilege Audit
 **Status**: Next Priority
 **Scope**:
 - Review `Network Contributor` and `AcrPull` role assignments.
