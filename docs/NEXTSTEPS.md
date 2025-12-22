@@ -42,9 +42,12 @@
 - **Automation**: Optimized CI/CD to run Plans automatically and gate only Applies.
 
 ### 6. ✅ Sales App Platform Requirements - COMPLETE
-**Status**: ✅ Deployed 2025-12-20
+**Status**: ✅ Deployed 2025-12-20 | Updated 2025-12-22
 **Deliverables**:
 - **Storage**: Permanent backup storage (`sta10corpsales`) with containers for all envs.
+  - Aligned with `storerootblob`: Standard_LRS, Cool tier, RBAC-based access
+  - Network rules simplified: Allow all traffic with Azure Services bypass
+  - Removed IP-based firewall rules (no longer needed for Terraform runner)
 - **Governance**: Policy update to allow `eastus2` failover.
 - **Networking**: Updated NSGs for AKS ingress (Port 80) and AzureLB.
 - **Identity**: Granted `Storage Blob Data Contributor` to AKS identities.

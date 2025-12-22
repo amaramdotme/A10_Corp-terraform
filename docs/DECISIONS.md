@@ -1222,3 +1222,25 @@ output "common_tags" {
 **Context**: Approval gates were blocking Plan jobs, reducing developer feedback speed.
 
 **Decision**: Removed environment-level protection from `terraform-plan` jobs. Plans now run automatically on Push/PR using branch-based OIDC federation. Manual approval is strictly required for `terraform-apply` jobs.
+
+---
+
+## Decision 27: Align Backup Storage with Terraform State Storage Configuration
+
+**Date**: 2025-12-22
+
+**Context**: The backup storage account (`sta10corpsales`) was initially configured with GRS replication, Hot tier, and IP-based firewall rules for the Terraform runner. This differed from the Terraform state storage (`storerootblob`) which used LRS, Cool tier, and RBAC-only access. Both storage accounts serve similar purposes (long-term storage) and should follow consistent patterns.
+
+**Decision**: Refactored `sta10corpsales` to mirror `storerootblob` configuration:
+- **Replication**: Changed from GRS to LRS (cost optimization, both in same region)
+- **Access Tier**: Changed from Hot to Cool (optimized for infrequent access)
+- **Network Rules**: Changed from Deny with IP whitelist to Allow all traffic
+- **Access Control**: RBAC-only (AKS managed identity has Storage Blob Data Contributor role)
+- **Removed**: HTTP data source for IP detection (`data.http.current_ip`)
+
+**Rationale**:
+- Consistency: Both storage accounts now follow identical configuration patterns
+- Simplified operations: No IP whitelisting needed for Terraform runner (uses RBAC)
+- Cost efficiency: LRS sufficient for same-region storage, Cool tier for infrequent access
+- Security: RBAC provides granular access control without IP dependency
+- Meets requirements: Azure Services bypass still enabled for cross-region access

@@ -35,8 +35,9 @@ All platform logs are centralized in a **Permanent Log Analytics Workspace** (`l
 ### 3. Resilience & Disaster Recovery
 A **Permanent Backup Storage Account** (`sta10corpsales`) is provisioned in the Foundation layer.
 - **Purpose**: Long-term retention of application backups (JSON submissions).
+- **Configuration**: Standard_LRS, Cool tier (mirrors `storerootblob` for consistency).
 - **Structure**: Dedicated containers for each environment (`backups-dev`, `backups-stage`, `backups-prod`).
-- **Access**: Grants `Storage Blob Data Contributor` to AKS nodes and allows Azure Services to bypass firewall.
+- **Access**: RBAC-based with `Storage Blob Data Contributor` granted to AKS managed identities. Network rules allow all traffic with Azure Services bypass.
 
 ### 4. Networking (The "Roads")
 The platform provides a **Network-Vended** model. Application teams are expected to deploy their compute (AKS, VMs) into the provided subnets:
